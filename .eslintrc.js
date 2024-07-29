@@ -168,6 +168,18 @@ const rules = {
                 ],
             },
         },
+        {
+            files: ["packages/dev/core/**"],
+            rules: {
+                "tree-shaking/no-side-effects-in-initialization": "error",
+            },
+        },
+        {
+            files: require("./packages/dev/core/package.json").sideEffects.map((path) => `packages/dev/core/${path.replace(/^dist/, "src").replace(/\.js$/, ".ts")}`),
+            rules: {
+                "tree-shaking/no-side-effects-in-initialization": "off",
+            },
+        },
     ],
     env: {
         browser: true,
@@ -181,6 +193,7 @@ const rules = {
         // "@typescript-eslint"
         "babylonjs",
         "jsdoc",
+        "tree-shaking",
     ],
     extends: [
         "eslint:recommended",
@@ -253,6 +266,7 @@ const rules = {
         "jsdoc/require-param-name": "error",
         "jsdoc/require-returns": ["error", { checkGetters: false, checkConstructors: false }],
         "jsdoc/require-returns-check": "error",
+        "tree-shaking/no-side-effects-in-initialization": "off", // enabled for specific packages in overrides
         "import/export": "warn",
         "no-useless-escape": "warn",
         "no-case-declarations": "warn",
