@@ -1,5 +1,6 @@
 // eslint-disable-next-line import/no-internal-modules
 import type { AbstractEngine, AbstractEngineOptions, EngineOptions, WebGPUEngineOptions } from "core/index";
+import { Constants } from "core/Engines/constants";
 
 import type { ViewerOptions } from "./viewer";
 import { Viewer } from "./viewer";
@@ -38,6 +39,8 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
     resizeObserver.observe(canvas);
     disposeActions.push(() => resizeObserver.disconnect());
 
+    let update = () => {};
+
     // Create an engine instance.
     let engine: AbstractEngine;
     switch (finalOptions.engine ?? getDefaultEngine()) {
@@ -52,6 +55,24 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
             const { WebGPUEngine } = await import("core/Engines/webgpuEngine");
             const webGPUEngine = new WebGPUEngine(canvas, options);
             await webGPUEngine.initAsync();
+            webGPUEngine.onNewSceneAddedObservable.addOnce((scene) => {
+                // scene.executeWhenReady(() => {
+                //     webGPUEngine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
+                //     webGPUEngine.snapshotRendering = true;
+                // });
+                // viewer.onModelChanged.add(() => {
+                //     scene.executeWhenReady(() => {
+                //         webGPUEngine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
+                //         webGPUEngine.snapshotRendering = true;
+                //     });
+                // });
+                update = () => {
+                    scene.executeWhenReady(() => {
+                        webGPUEngine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
+                        webGPUEngine.snapshotRenderingReset();
+                    }, true);
+                };
+            });
             engine = webGPUEngine;
             break;
         }
@@ -75,6 +96,8 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
 
     // Instantiate the Viewer with the engine and options.
     const viewer = new Viewer(engine, finalOptions);
+    viewer.onModelChanged.add(update);
+    viewer.onEnvironmentChanged.add(update);
     disposeActions.push(viewer.dispose.bind(viewer));
 
     disposeActions.push(() => engine.dispose());

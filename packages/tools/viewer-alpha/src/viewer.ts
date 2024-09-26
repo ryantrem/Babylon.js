@@ -190,7 +190,11 @@ export class Viewer implements IDisposable {
 
         // TODO: render at least back ground. Maybe we can only run renderloop when a mesh is loaded. What to render until then?
         const render = () => {
-            this._details.scene.render();
+            try {
+                const start = performance.now();
+                this._details.scene.render();
+                //console.log("Render time: ", performance.now() - start);
+            } catch {}
             if (this.isAnimationPlaying) {
                 this.onAnimationProgressChanged.notifyObservers();
                 this._autoRotationBehavior.resetLastInteractionTime();
