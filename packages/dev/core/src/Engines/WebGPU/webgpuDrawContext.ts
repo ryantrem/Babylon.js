@@ -81,9 +81,11 @@ export class WebGPUDrawContext implements IDrawContext {
     }
 
     public setBuffer(name: string, buffer: Nullable<WebGPUDataBuffer>): void {
-        this._isDirty ||= buffer?.uniqueId !== this.buffers[name]?.uniqueId;
+        if (this.buffers) {
+            this._isDirty ||= buffer?.uniqueId !== this.buffers[name]?.uniqueId;
 
-        this.buffers[name] = buffer;
+            this.buffers[name] = buffer;
+        }
     }
 
     public setIndirectData(indexOrVertexCount: number, instanceCount: number, firstIndexOrVertex: number): void {
