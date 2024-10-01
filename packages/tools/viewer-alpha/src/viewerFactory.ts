@@ -77,46 +77,28 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
         disposeActions.push(() => beforeRenderObserver.remove());
 
         let snapshotRenderingDisableCount = 0;
-        const disableSnapshotRendering = () => {
+        const suspendSnapshotRendering = async <T>(operation: () => Promise<T>) => {
             snapshotRenderingDisableCount++;
             engine.snapshotRendering = false;
 
-            let disposed = false;
-            return {
-                dispose: () => {
-                    if (!disposed) {
-                        disposed = true;
-                        snapshotRenderingDisableCount--;
-                        details.scene.executeWhenReady(() => {
-                            if (snapshotRenderingDisableCount === 0) {
-                                engine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
-                                engine.snapshotRendering = true;
-                            }
-                        });
+            try {
+                return await operation();
+            } finally {
+                snapshotRenderingDisableCount--;
+                details.scene.executeWhenReady(() => {
+                    if (snapshotRenderingDisableCount === 0) {
+                        engine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
+                        engine.snapshotRendering = true;
                     }
-                },
-            };
+                });
+            }
         };
 
         const originalLoadModel = details.viewer.loadModel.bind(details.viewer);
-        details.viewer.loadModel = async (...args) => {
-            const snapshotRenderingDisableToken = disableSnapshotRendering();
-            try {
-                return await originalLoadModel(...args);
-            } finally {
-                snapshotRenderingDisableToken.dispose();
-            }
-        };
+        details.viewer.loadModel = async (...args) => suspendSnapshotRendering(() => originalLoadModel(...args));
 
         const originalLoadEnvironment = details.viewer.loadEnvironment.bind(details.viewer);
-        details.viewer.loadEnvironment = async (...args) => {
-            const snapshotRenderingDisableToken = disableSnapshotRendering();
-            try {
-                return await originalLoadEnvironment(...args);
-            } finally {
-                snapshotRenderingDisableToken.dispose();
-            }
-        };
+        details.viewer.loadEnvironment = async (...args) => suspendSnapshotRendering(() => originalLoadEnvironment(...args));
 
         // Call the original onInitialized callback, if one was provided.
         onInitialized?.(details);
