@@ -69,25 +69,54 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
             }
 
             // If snapshot rendering is enabled, transfer the updated skybox world matrix to the effect.
-            if (details.skybox && engine.snapshotRendering && engine.snapshotRenderingMode === Constants.SNAPSHOTRENDERING_FAST) {
-                details.skybox.transferToEffect(details.skybox.computeWorldMatrix(true));
+            if (engine.snapshotRendering && engine.snapshotRenderingMode === Constants.SNAPSHOTRENDERING_FAST) {
+                details.skybox?.transferToEffect(details.skybox.computeWorldMatrix(true));
+                details.model?.skeletons.forEach((skeleton) => skeleton.prepare());
             }
         });
         disposeActions.push(() => beforeRenderObserver.remove());
 
-        // Reset snapshot rendering mode to fast after the model or environment changes.
-        const resetSnapshotRendering = () => {
-            details.scene.executeWhenReady(() => {
-                engine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
-                engine.snapshotRendering = true;
-            });
+        let snapshotRenderingDisableCount = 0;
+        const disableSnapshotRendering = () => {
+            snapshotRenderingDisableCount++;
+            engine.snapshotRendering = false;
+
+            let disposed = false;
+            return {
+                dispose: () => {
+                    if (!disposed) {
+                        disposed = true;
+                        snapshotRenderingDisableCount--;
+                        details.scene.executeWhenReady(() => {
+                            if (snapshotRenderingDisableCount === 0) {
+                                engine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
+                                engine.snapshotRendering = true;
+                            }
+                        });
+                    }
+                },
+            };
         };
 
-        const modelChangedObserver = details.viewer.onModelChanged.add(resetSnapshotRendering);
-        const environmentChangedObserver = details.viewer.onEnvironmentChanged.add(resetSnapshotRendering);
+        const originalLoadModel = details.viewer.loadModel.bind(details.viewer);
+        details.viewer.loadModel = async (...args) => {
+            const snapshotRenderingDisableToken = disableSnapshotRendering();
+            try {
+                return await originalLoadModel(...args);
+            } finally {
+                snapshotRenderingDisableToken.dispose();
+            }
+        };
 
-        disposeActions.push(() => modelChangedObserver.remove());
-        disposeActions.push(() => environmentChangedObserver.remove());
+        const originalLoadEnvironment = details.viewer.loadEnvironment.bind(details.viewer);
+        details.viewer.loadEnvironment = async (...args) => {
+            const snapshotRenderingDisableToken = disableSnapshotRendering();
+            try {
+                return await originalLoadEnvironment(...args);
+            } finally {
+                snapshotRenderingDisableToken.dispose();
+            }
+        };
 
         // Call the original onInitialized callback, if one was provided.
         onInitialized?.(details);
