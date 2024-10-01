@@ -49,7 +49,6 @@ function createSkybox(scene: Scene, camera: Camera, environmentTexture: CubeText
     hdrSkybox.material = hdrSkyboxMaterial;
     hdrSkybox.isPickable = false;
     hdrSkybox.infiniteDistance = true;
-    hdrSkybox.ignoreCameraMaxZ = true;
 
     updateSkybox(hdrSkybox, camera);
 
@@ -74,6 +73,11 @@ export type ViewerDetails = {
      * Provides access to the Scene managed by the Viewer.
      */
     scene: Scene;
+
+    /**
+     * Provides access to the currently loaded skybox mesh.
+     */
+    skybox: Nullable<Mesh>;
 
     /**
      * Provides access to the currently loaded model.
@@ -153,7 +157,6 @@ export class Viewer implements IDisposable {
     private readonly _camera: ArcRotateCamera;
     private readonly _autoRotationBehavior: AutoRotationBehavior;
     private readonly _renderLoopController: IDisposable;
-    private _skybox: Nullable<Mesh> = null;
     private _light: Nullable<HemisphericLight> = null;
 
     private _isDisposed = false;
@@ -177,6 +180,7 @@ export class Viewer implements IDisposable {
         this._details = {
             viewer: this,
             scene: new Scene(this._engine),
+            skybox: null,
             model: null,
         };
         this._details.scene.clearColor = finalOptions.backgroundColor;
@@ -190,11 +194,7 @@ export class Viewer implements IDisposable {
 
         // TODO: render at least back ground. Maybe we can only run renderloop when a mesh is loaded. What to render until then?
         const render = () => {
-            try {
-                const start = performance.now();
-                this._details.scene.render();
-                //console.log("Render time: ", performance.now() - start);
-            } catch {}
+            this._details.scene.render();
             if (this.isAnimationPlaying) {
                 this.onAnimationProgressChanged.notifyObservers();
                 this._autoRotationBehavior.resetLastInteractionTime();
@@ -398,14 +398,14 @@ export class Viewer implements IDisposable {
                         this._details.scene.environmentTexture = cubeTexture;
 
                         const skybox = createSkybox(this._details.scene, this._camera, cubeTexture, 0.3);
-                        this._skybox = skybox;
+                        this._details.skybox = skybox;
 
                         this._details.scene.autoClear = false;
 
                         const dispose = () => {
                             cubeTexture.dispose();
                             skybox.dispose();
-                            this._skybox = null;
+                            this._details.skybox = null;
                         };
 
                         const successObserver = cubeTexture.onLoadObservable.addOnce(() => {
@@ -533,7 +533,7 @@ export class Viewer implements IDisposable {
         this._camera.restoreStateInterpolationFactor = 0.1;
         this._camera.storeState();
 
-        updateSkybox(this._skybox, this._camera);
+        updateSkybox(this._details.skybox, this._camera);
     }
 
     private _updateLight() {

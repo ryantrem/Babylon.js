@@ -39,8 +39,6 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
     resizeObserver.observe(canvas);
     disposeActions.push(() => resizeObserver.disconnect());
 
-    let update = () => {};
-
     // Create an engine instance.
     let engine: AbstractEngine;
     switch (finalOptions.engine ?? getDefaultEngine()) {
@@ -55,24 +53,6 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
             const { WebGPUEngine } = await import("core/Engines/webgpuEngine");
             const webGPUEngine = new WebGPUEngine(canvas, options);
             await webGPUEngine.initAsync();
-            webGPUEngine.onNewSceneAddedObservable.addOnce((scene) => {
-                // scene.executeWhenReady(() => {
-                //     webGPUEngine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
-                //     webGPUEngine.snapshotRendering = true;
-                // });
-                // viewer.onModelChanged.add(() => {
-                //     scene.executeWhenReady(() => {
-                //         webGPUEngine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
-                //         webGPUEngine.snapshotRendering = true;
-                //     });
-                // });
-                update = () => {
-                    scene.executeWhenReady(() => {
-                        webGPUEngine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
-                        webGPUEngine.snapshotRenderingReset();
-                    }, true);
-                };
-            });
             engine = webGPUEngine;
             break;
         }
@@ -81,14 +61,33 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
     // Override the onInitialized callback to add in some specific behavior.
     const onInitialized = finalOptions.onInitialized;
     finalOptions.onInitialized = (details) => {
-        // Resize if needed right before rendering the Viewer scene to avoid any flickering.
         const beforeRenderObserver = details.scene.onBeforeRenderObservable.add(() => {
+            // Resize if needed right before rendering the Viewer scene to avoid any flickering.
             if (needsResize) {
                 engine.resize();
                 needsResize = false;
             }
+
+            // If snapshot rendering is enabled, transfer the updated skybox world matrix to the effect.
+            if (details.skybox && engine.snapshotRendering && engine.snapshotRenderingMode === Constants.SNAPSHOTRENDERING_FAST) {
+                details.skybox.transferToEffect(details.skybox.computeWorldMatrix(true));
+            }
         });
         disposeActions.push(() => beforeRenderObserver.remove());
+
+        // Reset snapshot rendering mode to fast after the model or environment changes.
+        const resetSnapshotRendering = () => {
+            details.scene.executeWhenReady(() => {
+                engine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
+                engine.snapshotRendering = true;
+            });
+        };
+
+        const modelChangedObserver = details.viewer.onModelChanged.add(resetSnapshotRendering);
+        const environmentChangedObserver = details.viewer.onEnvironmentChanged.add(resetSnapshotRendering);
+
+        disposeActions.push(() => modelChangedObserver.remove());
+        disposeActions.push(() => environmentChangedObserver.remove());
 
         // Call the original onInitialized callback, if one was provided.
         onInitialized?.(details);
@@ -96,8 +95,6 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
 
     // Instantiate the Viewer with the engine and options.
     const viewer = new Viewer(engine, finalOptions);
-    viewer.onModelChanged.add(update);
-    viewer.onEnvironmentChanged.add(update);
     disposeActions.push(viewer.dispose.bind(viewer));
 
     disposeActions.push(() => engine.dispose());
