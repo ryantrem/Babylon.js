@@ -76,6 +76,7 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
         });
         disposeActions.push(() => beforeRenderObserver.remove());
 
+        // Helper to suspend snapshot rendering during operations that change the scene.
         let snapshotRenderingDisableCount = 0;
         const suspendSnapshotRendering = async <T>(operation: () => Promise<T>) => {
             snapshotRenderingDisableCount++;
@@ -94,10 +95,12 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
             }
         };
 
-        const originalLoadModel = details.viewer.loadModel.bind(details.viewer);
+        // Suspend snapshot rendering while loading a model.
+        const originalLoadModel: typeof details.viewer.loadModel = details.viewer.loadModel.bind(details.viewer);
         details.viewer.loadModel = async (...args) => suspendSnapshotRendering(() => originalLoadModel(...args));
 
-        const originalLoadEnvironment = details.viewer.loadEnvironment.bind(details.viewer);
+        // Suspend snapshot rendering while loading an environment.
+        const originalLoadEnvironment: typeof details.viewer.loadEnvironment = details.viewer.loadEnvironment.bind(details.viewer);
         details.viewer.loadEnvironment = async (...args) => suspendSnapshotRendering(() => originalLoadEnvironment(...args));
 
         // Call the original onInitialized callback, if one was provided.
