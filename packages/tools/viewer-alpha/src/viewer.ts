@@ -340,10 +340,20 @@ export class Viewer implements IDisposable {
             try {
                 if (source) {
                     this._details.model = await loadAssetContainerAsync(source, this._details.scene, options);
+
+                    // Start all animations and immediately pause them so that when switching between animations, the model is already at frame 0.
                     this._details.model.animationGroups.forEach((group) => {
                         group.start(true, this.animationSpeed);
                         group.pause();
                     });
+
+                    // Set a relatively high limit on the number of morph target influencers to avoid shader recompilation.
+                    for (const mesh of this._details.model.meshes) {
+                        if (mesh.morphTargetManager) {
+                            mesh.morphTargetManager.numMaxInfluencers = Math.min(mesh.morphTargetManager.numTargets, 20);
+                        }
+                    }
+
                     this.selectedAnimation = 0;
                     this._details.model.addAllToScene();
                 }
