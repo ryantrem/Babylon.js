@@ -1,6 +1,5 @@
 // eslint-disable-next-line import/no-internal-modules
 import type { AbstractEngine, AbstractEngineOptions, EngineOptions, WebGPUEngineOptions } from "core/index";
-import { Constants } from "core/Engines/constants";
 
 import type { ViewerOptions } from "./viewer";
 import { Viewer } from "./viewer";
@@ -61,47 +60,14 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
     // Override the onInitialized callback to add in some specific behavior.
     const onInitialized = finalOptions.onInitialized;
     finalOptions.onInitialized = (details) => {
+        // Resize if needed right before rendering the Viewer scene to avoid any flickering.
         const beforeRenderObserver = details.scene.onBeforeRenderObservable.add(() => {
-            // Resize if needed right before rendering the Viewer scene to avoid any flickering.
             if (needsResize) {
                 engine.resize();
                 needsResize = false;
             }
-
-            // If snapshot rendering is enabled, transfer the updated skybox world matrix to the effect.
-            if (engine.snapshotRendering && engine.snapshotRenderingMode === Constants.SNAPSHOTRENDERING_FAST) {
-                details.skybox?.transferToEffect(details.skybox.computeWorldMatrix(true));
-                details.model?.skeletons.forEach((skeleton) => skeleton.prepare());
-            }
         });
         disposeActions.push(() => beforeRenderObserver.remove());
-
-        // Helper to suspend snapshot rendering during operations that change the scene.
-        let snapshotRenderingDisableCount = 0;
-        const suspendSnapshotRendering = async <T>(operation: () => Promise<T>) => {
-            snapshotRenderingDisableCount++;
-            engine.snapshotRendering = false;
-
-            try {
-                return await operation();
-            } finally {
-                snapshotRenderingDisableCount--;
-                details.scene.executeWhenReady(() => {
-                    if (snapshotRenderingDisableCount === 0) {
-                        engine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
-                        engine.snapshotRendering = true;
-                    }
-                });
-            }
-        };
-
-        // Suspend snapshot rendering while loading a model.
-        const originalLoadModel: typeof details.viewer.loadModel = details.viewer.loadModel.bind(details.viewer);
-        details.viewer.loadModel = async (...args) => suspendSnapshotRendering(() => originalLoadModel(...args));
-
-        // Suspend snapshot rendering while loading an environment.
-        const originalLoadEnvironment: typeof details.viewer.loadEnvironment = details.viewer.loadEnvironment.bind(details.viewer);
-        details.viewer.loadEnvironment = async (...args) => suspendSnapshotRendering(() => originalLoadEnvironment(...args));
 
         // Call the original onInitialized callback, if one was provided.
         onInitialized?.(details);

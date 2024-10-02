@@ -14,6 +14,7 @@ import type {
 } from "core/index";
 
 import { ArcRotateCamera } from "core/Cameras/arcRotateCamera";
+import { Constants } from "core/Engines/constants";
 import { HemisphericLight } from "core/Lights/hemisphericLight";
 import { loadAssetContainerAsync } from "core/Loading/sceneLoader";
 import { PBRMaterial } from "core/Materials/PBR/pbrMaterial";
@@ -73,11 +74,6 @@ export type ViewerDetails = {
      * Provides access to the Scene managed by the Viewer.
      */
     scene: Scene;
-
-    /**
-     * Provides access to the currently loaded skybox mesh.
-     */
-    skybox: Nullable<Mesh>;
 
     /**
      * Provides access to the currently loaded model.
@@ -157,8 +153,10 @@ export class Viewer implements IDisposable {
     private readonly _camera: ArcRotateCamera;
     private readonly _autoRotationBehavior: AutoRotationBehavior;
     private readonly _renderLoopController: IDisposable;
+    private _skybox: Nullable<Mesh> = null;
     private _light: Nullable<HemisphericLight> = null;
 
+    private _snapshotRenderingDisableCount = 0;
     private _isDisposed = false;
 
     private readonly _loadModelLock = new AsyncLock();
@@ -180,7 +178,6 @@ export class Viewer implements IDisposable {
         this._details = {
             viewer: this,
             scene: new Scene(this._engine),
-            skybox: null,
             model: null,
         };
         this._details.scene.clearColor = finalOptions.backgroundColor;
@@ -192,9 +189,18 @@ export class Viewer implements IDisposable {
         // Load a default light, but ignore errors as the user might be immediately loading their own environment.
         this.resetEnvironment().catch(() => {});
 
-        // TODO: render at least back ground. Maybe we can only run renderloop when a mesh is loaded. What to render until then?
+        // TODO: Pause rendering when there is no need (e.g. camera pose has not changed and animations are not running).
         const render = () => {
+            // If snapshot rendering is enabled, transfer the updated skybox world matrix to the effect.
+            if (this._engine.snapshotRendering && this._engine.snapshotRenderingMode === Constants.SNAPSHOTRENDERING_FAST) {
+                this._skybox?.transferToEffect(this._skybox.computeWorldMatrix(true));
+                this._details.model?.skeletons.forEach((skeleton) => skeleton.prepare());
+            }
+
+            // Render the scene.
             this._details.scene.render();
+
+            // If animations are playing, fire the progress changed event, and reset the last interaction time for the camera auto rotation.
             if (this.isAnimationPlaying) {
                 this.onAnimationProgressChanged.notifyObservers();
                 this._autoRotationBehavior.resetLastInteractionTime();
@@ -305,6 +311,23 @@ export class Viewer implements IDisposable {
         return this._details.model?.animationGroups[this._selectedAnimation] ?? null;
     }
 
+    private async _suspendSnapshotRendering<T>(operation: () => Promise<T>) {
+        this._snapshotRenderingDisableCount++;
+        this._engine.snapshotRendering = false;
+
+        try {
+            return await operation();
+        } finally {
+            this._snapshotRenderingDisableCount--;
+            this._details.scene.executeWhenReady(() => {
+                if (this._snapshotRenderingDisableCount === 0) {
+                    this._engine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
+                    this._engine.snapshotRendering = true;
+                }
+            });
+        }
+    }
+
     /**
      * Loads a 3D model from the specified URL.
      * @remarks
@@ -333,39 +356,43 @@ export class Viewer implements IDisposable {
 
         await this._loadModelLock.lockAsync(async () => {
             throwIfAborted(abortSignal, abortController.signal);
-            this._details.model?.dispose();
-            this._details.model = null;
-            this.selectedAnimation = -1;
 
-            try {
-                if (source) {
-                    this._details.model = await loadAssetContainerAsync(source, this._details.scene, options);
+            // Suspend snapshot rendering while loading a model.
+            await this._suspendSnapshotRendering(async () => {
+                this._details.model?.dispose();
+                this._details.model = null;
+                this.selectedAnimation = -1;
 
-                    // Start all animations and immediately pause them so that when switching between animations, the model is already at frame 0.
-                    this._details.model.animationGroups.forEach((group) => {
-                        group.start(true, this.animationSpeed);
-                        group.pause();
-                    });
+                try {
+                    if (source) {
+                        this._details.model = await loadAssetContainerAsync(source, this._details.scene, options);
 
-                    // Set a relatively high limit on the number of morph target influencers to avoid shader recompilation.
-                    for (const mesh of this._details.model.meshes) {
-                        if (mesh.morphTargetManager) {
-                            mesh.morphTargetManager.numMaxInfluencers = Math.min(mesh.morphTargetManager.numTargets, 20);
+                        // Start all animations and immediately pause them so that when switching between animations, the model is already at frame 0.
+                        this._details.model.animationGroups.forEach((group) => {
+                            group.start(true, this.animationSpeed);
+                            group.pause();
+                        });
+
+                        // Set a relatively high limit on the number of morph target influencers to avoid shader recompilation.
+                        for (const mesh of this._details.model.meshes) {
+                            if (mesh.morphTargetManager) {
+                                mesh.morphTargetManager.numMaxInfluencers = Math.min(mesh.morphTargetManager.numTargets, 20);
+                            }
                         }
+
+                        this.selectedAnimation = 0;
+                        this._details.model.addAllToScene();
                     }
 
-                    this.selectedAnimation = 0;
-                    this._details.model.addAllToScene();
+                    this._updateCamera();
+                    this._updateLight();
+                    this._applyAnimationSpeed();
+                    this.onModelChanged.notifyObservers();
+                } catch (e) {
+                    this.onModelError.notifyObservers(e);
+                    throw e;
                 }
-
-                this._updateCamera();
-                this._updateLight();
-                this._applyAnimationSpeed();
-                this.onModelChanged.notifyObservers();
-            } catch (e) {
-                this.onModelError.notifyObservers(e);
-                throw e;
-            }
+            });
         });
     }
 
@@ -397,52 +424,56 @@ export class Viewer implements IDisposable {
 
         await this._loadEnvironmentLock.lockAsync(async () => {
             throwIfAborted(abortSignal, abortController.signal);
-            this._environment?.dispose();
-            this._environment = null;
-            this._details.scene.autoClear = true;
 
-            try {
-                if (url) {
-                    this._environment = await new Promise<IDisposable>((resolve, reject) => {
-                        const cubeTexture = CubeTexture.CreateFromPrefilteredData(url, this._details.scene);
-                        this._details.scene.environmentTexture = cubeTexture;
+            // Suspend snapshot rendering while loading an environment.
+            await this._suspendSnapshotRendering(async () => {
+                this._environment?.dispose();
+                this._environment = null;
+                this._details.scene.autoClear = true;
 
-                        const skybox = createSkybox(this._details.scene, this._camera, cubeTexture, 0.3);
-                        this._details.skybox = skybox;
+                try {
+                    if (url) {
+                        this._environment = await new Promise<IDisposable>((resolve, reject) => {
+                            const cubeTexture = CubeTexture.CreateFromPrefilteredData(url, this._details.scene);
+                            this._details.scene.environmentTexture = cubeTexture;
 
-                        this._details.scene.autoClear = false;
+                            const skybox = createSkybox(this._details.scene, this._camera, cubeTexture, 0.3);
+                            this._skybox = skybox;
 
-                        const dispose = () => {
-                            cubeTexture.dispose();
-                            skybox.dispose();
-                            this._details.skybox = null;
-                        };
+                            this._details.scene.autoClear = false;
 
-                        const successObserver = cubeTexture.onLoadObservable.addOnce(() => {
-                            successObserver.remove();
-                            errorObserver.remove();
-                            resolve({
-                                dispose,
-                            });
-                        });
+                            const dispose = () => {
+                                cubeTexture.dispose();
+                                skybox.dispose();
+                                this._skybox = null;
+                            };
 
-                        const errorObserver = Texture.OnTextureLoadErrorObservable.add((texture) => {
-                            if (texture === cubeTexture) {
+                            const successObserver = cubeTexture.onLoadObservable.addOnce(() => {
                                 successObserver.remove();
                                 errorObserver.remove();
-                                dispose();
-                                reject(new Error("Failed to load environment texture."));
-                            }
-                        });
-                    });
-                }
+                                resolve({
+                                    dispose,
+                                });
+                            });
 
-                this._updateLight();
-                this.onEnvironmentChanged.notifyObservers();
-            } catch (e) {
-                this.onEnvironmentError.notifyObservers(e);
-                throw e;
-            }
+                            const errorObserver = Texture.OnTextureLoadErrorObservable.add((texture) => {
+                                if (texture === cubeTexture) {
+                                    successObserver.remove();
+                                    errorObserver.remove();
+                                    dispose();
+                                    reject(new Error("Failed to load environment texture."));
+                                }
+                            });
+                        });
+                    }
+
+                    this._updateLight();
+                    this.onEnvironmentChanged.notifyObservers();
+                } catch (e) {
+                    this.onEnvironmentError.notifyObservers(e);
+                    throw e;
+                }
+            });
         });
     }
 
@@ -543,7 +574,7 @@ export class Viewer implements IDisposable {
         this._camera.restoreStateInterpolationFactor = 0.1;
         this._camera.storeState();
 
-        updateSkybox(this._details.skybox, this._camera);
+        updateSkybox(this._skybox, this._camera);
     }
 
     private _updateLight() {
