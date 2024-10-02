@@ -1,8 +1,10 @@
 // eslint-disable-next-line import/no-internal-modules
-import type { AbstractEngine, AbstractEngineOptions, EngineOptions, WebGPUEngineOptions } from "core/index";
+import type { AbstractEngine, AbstractEngineOptions, EngineOptions, Nullable, WebGPUDrawContext, WebGPUEngineOptions, WebGPUShaderProcessor } from "core/index";
+import type { WebGPUPipelineContext } from "core/Engines/WebGPU/webgpuPipelineContext";
 import { Constants } from "core/Engines/constants";
+import { BindMorphTargetParameters } from "core/Materials/materialHelper.functions";
 
-import type { ViewerOptions } from "./viewer";
+import type { ViewerDetails, ViewerOptions } from "./viewer";
 import { Viewer } from "./viewer";
 
 /**
@@ -41,6 +43,7 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
 
     // Create an engine instance.
     let engine: AbstractEngine;
+    let engineSpecificOnBeforeRender: Nullable<(details: Readonly<ViewerDetails>) => void> = null;
     switch (finalOptions.engine ?? getDefaultEngine()) {
         case "WebGL": {
             // eslint-disable-next-line @typescript-eslint/naming-convention, no-case-declarations
@@ -54,6 +57,34 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
             const webGPUEngine = new WebGPUEngine(canvas, options);
             await webGPUEngine.initAsync();
             engine = webGPUEngine;
+
+            engineSpecificOnBeforeRender = (details) => {
+                if (engine.snapshotRendering && engine.snapshotRenderingMode === Constants.SNAPSHOTRENDERING_FAST) {
+                    // Handle morph targets.
+                    if (details.model) {
+                        for (const mesh of details.model.meshes) {
+                            if (mesh.morphTargetManager) {
+                                for (const subMesh of mesh.subMeshes) {
+                                    const drawContext = subMesh._drawWrapper.drawContext as WebGPUDrawContext | undefined;
+                                    const effect = subMesh._drawWrapper.effect;
+                                    const pipelineContext = effect?._pipelineContext;
+                                    if (drawContext && effect && pipelineContext) {
+                                        const webGPUPipelineContext = pipelineContext as WebGPUPipelineContext;
+                                        const dataBuffer = drawContext.buffers["LeftOver" satisfies (typeof WebGPUShaderProcessor)["LeftOvertUBOName"]];
+                                        const ubLeftOver = webGPUPipelineContext.uniformBuffer;
+                                        if (dataBuffer && ubLeftOver?.setDataBuffer(dataBuffer)) {
+                                            mesh.morphTargetManager._bind(effect);
+                                            BindMorphTargetParameters(mesh, effect);
+                                            ubLeftOver.update();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
             break;
         }
     }
@@ -68,11 +99,26 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
                 needsResize = false;
             }
 
-            // If snapshot rendering is enabled, transfer the updated skybox world matrix to the effect.
+            // If snapshot rendering is enabled, there are some additional steps needed to ensure everything renders correctly.
             if (engine.snapshotRendering && engine.snapshotRenderingMode === Constants.SNAPSHOTRENDERING_FAST) {
-                details.skybox?.transferToEffect(details.skybox.computeWorldMatrix(true));
-                details.model?.skeletons.forEach((skeleton) => skeleton.prepare());
+                if (details.skybox) {
+                    // Handle skybox.
+                    details.skybox.transferToEffect(details.skybox.computeWorldMatrix(true));
+                }
+
+                if (details.model) {
+                    // Handle skeletons.
+                    details.model.skeletons.forEach((skeleton) => skeleton.prepare());
+                    for (const mesh of details.model.meshes) {
+                        if (mesh.skeleton) {
+                            const world = mesh.computeWorldMatrix(true);
+                            mesh.transferToEffect(world);
+                        }
+                    }
+                }
             }
+
+            engineSpecificOnBeforeRender?.(details);
         });
         disposeActions.push(() => beforeRenderObserver.remove());
 
@@ -87,10 +133,17 @@ export async function createViewerForCanvas(canvas: HTMLCanvasElement, options?:
             } finally {
                 snapshotRenderingDisableCount--;
                 details.scene.executeWhenReady(() => {
-                    if (snapshotRenderingDisableCount === 0) {
-                        engine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
-                        engine.snapshotRendering = true;
-                    }
+                    // Wait for the next frame to render before enabling snapshot rendering again.
+                    const targetFrame = details.scene.getEngine().frameId + 2;
+                    const endFrameObserver = details.scene.getEngine().onEndFrameObservable.add(() => {
+                        if (details.scene.getEngine().frameId >= targetFrame) {
+                            endFrameObserver.remove();
+                            if (snapshotRenderingDisableCount === 0) {
+                                engine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_FAST;
+                                engine.snapshotRendering = true;
+                            }
+                        }
+                    });
                 });
             }
         };
