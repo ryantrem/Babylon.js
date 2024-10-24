@@ -181,6 +181,7 @@ export class Viewer implements IDisposable {
     private _skybox: Nullable<Mesh> = null;
     private _light: Nullable<HemisphericLight> = null;
 
+    private _performancePriorityDisableCount = 0;
     private _isDisposed = false;
 
     private readonly _loadModelLock = new AsyncLock();
@@ -204,7 +205,6 @@ export class Viewer implements IDisposable {
             scene: new Scene(this._engine),
             model: null,
         };
-        this._details.scene.performancePriority = ScenePerformancePriority.Aggressive;
         this._details.scene.clearColor = finalOptions.backgroundColor;
         this._snapshotHelper = new SnapshotRenderingHelper(this._details.scene, { morphTargetsNumMaxInfluences: 30 });
         this._camera = new ArcRotateCamera("camera1", 0, 0, 1, Vector3.Zero(), this._details.scene);
@@ -355,34 +355,36 @@ export class Viewer implements IDisposable {
         const abortController = (this._loadModelAbortController = new AbortController());
 
         await this._loadModelLock.lockAsync(async () => {
-            throwIfAborted(abortSignal, abortController.signal);
-            this._snapshotHelper.disableSnapshotRendering();
-            this._details.model?.dispose();
-            this._details.model = null;
-            this.selectedAnimation = -1;
+            await this._suspendPerformancePriority(async () => {
+                throwIfAborted(abortSignal, abortController.signal);
+                this._snapshotHelper.disableSnapshotRendering();
+                this._details.model?.dispose();
+                this._details.model = null;
+                this.selectedAnimation = -1;
 
-            try {
-                if (source) {
-                    this._details.model = await loadAssetContainerAsync(source, this._details.scene, options);
-                    this._details.model.animationGroups.forEach((group) => {
-                        group.start(true, this.animationSpeed);
-                        group.pause();
-                    });
-                    this.selectedAnimation = 0;
-                    this._snapshotHelper.fixMeshes(this._details.model.meshes);
-                    this._details.model.addAllToScene();
+                try {
+                    if (source) {
+                        this._details.model = await loadAssetContainerAsync(source, this._details.scene, options);
+                        this._details.model.animationGroups.forEach((group) => {
+                            group.start(true, this.animationSpeed);
+                            group.pause();
+                        });
+                        this.selectedAnimation = 0;
+                        this._snapshotHelper.fixMeshes(this._details.model.meshes);
+                        this._details.model.addAllToScene();
+                    }
+
+                    this._updateCamera();
+                    this._updateLight();
+                    this._applyAnimationSpeed();
+                    this.onModelChanged.notifyObservers();
+                } catch (e) {
+                    this.onModelError.notifyObservers(e);
+                    throw e;
+                } finally {
+                    this._snapshotHelper.enableSnapshotRendering();
                 }
-
-                this._updateCamera();
-                this._updateLight();
-                this._applyAnimationSpeed();
-                this.onModelChanged.notifyObservers();
-            } catch (e) {
-                this.onModelError.notifyObservers(e);
-                throw e;
-            } finally {
-                this._snapshotHelper.enableSnapshotRendering();
-            }
+            });
         });
     }
 
@@ -413,57 +415,59 @@ export class Viewer implements IDisposable {
         const abortController = (this._loadEnvironmentAbortController = new AbortController());
 
         await this._loadEnvironmentLock.lockAsync(async () => {
-            throwIfAborted(abortSignal, abortController.signal);
-            this._snapshotHelper.disableSnapshotRendering();
-            this._environment?.dispose();
-            this._environment = null;
-            this._details.scene.autoClear = true;
+            await this._suspendPerformancePriority(async () => {
+                throwIfAborted(abortSignal, abortController.signal);
+                this._snapshotHelper.disableSnapshotRendering();
+                this._environment?.dispose();
+                this._environment = null;
+                this._details.scene.autoClear = true;
 
-            try {
-                if (url) {
-                    this._environment = await new Promise<IDisposable>((resolve, reject) => {
-                        const cubeTexture = CubeTexture.CreateFromPrefilteredData(url, this._details.scene);
-                        this._details.scene.environmentTexture = cubeTexture;
+                try {
+                    if (url) {
+                        this._environment = await new Promise<IDisposable>((resolve, reject) => {
+                            const cubeTexture = CubeTexture.CreateFromPrefilteredData(url, this._details.scene);
+                            this._details.scene.environmentTexture = cubeTexture;
 
-                        const skybox = createSkybox(this._details.scene, this._camera, cubeTexture, 0.3);
-                        this._snapshotHelper.fixMeshes([skybox]);
-                        this._skybox = skybox;
+                            const skybox = createSkybox(this._details.scene, this._camera, cubeTexture, 0.3);
+                            this._snapshotHelper.fixMeshes([skybox]);
+                            this._skybox = skybox;
 
-                        this._details.scene.autoClear = false;
+                            this._details.scene.autoClear = false;
 
-                        const dispose = () => {
-                            cubeTexture.dispose();
-                            skybox.dispose();
-                            this._skybox = null;
-                        };
+                            const dispose = () => {
+                                cubeTexture.dispose();
+                                skybox.dispose();
+                                this._skybox = null;
+                            };
 
-                        const successObserver = cubeTexture.onLoadObservable.addOnce(() => {
-                            successObserver.remove();
-                            errorObserver.remove();
-                            resolve({
-                                dispose,
-                            });
-                        });
-
-                        const errorObserver = Texture.OnTextureLoadErrorObservable.add((texture) => {
-                            if (texture === cubeTexture) {
+                            const successObserver = cubeTexture.onLoadObservable.addOnce(() => {
                                 successObserver.remove();
                                 errorObserver.remove();
-                                dispose();
-                                reject(new Error("Failed to load environment texture."));
-                            }
-                        });
-                    });
-                }
+                                resolve({
+                                    dispose,
+                                });
+                            });
 
-                this._updateLight();
-                this.onEnvironmentChanged.notifyObservers();
-            } catch (e) {
-                this.onEnvironmentError.notifyObservers(e);
-                throw e;
-            } finally {
-                this._snapshotHelper.enableSnapshotRendering();
-            }
+                            const errorObserver = Texture.OnTextureLoadErrorObservable.add((texture) => {
+                                if (texture === cubeTexture) {
+                                    successObserver.remove();
+                                    errorObserver.remove();
+                                    dispose();
+                                    reject(new Error("Failed to load environment texture."));
+                                }
+                            });
+                        });
+                    }
+
+                    this._updateLight();
+                    this.onEnvironmentChanged.notifyObservers();
+                } catch (e) {
+                    this.onEnvironmentError.notifyObservers(e);
+                    throw e;
+                } finally {
+                    this._snapshotHelper.enableSnapshotRendering();
+                }
+            });
         });
     }
 
@@ -639,5 +643,28 @@ export class Viewer implements IDisposable {
         }
 
         throwIfAborted(...abortSignals);
+    }
+
+    // Helper to suspend performance priority mode during operations that change the scene.
+    private async _suspendPerformancePriority<T>(operation: () => Promise<T>) {
+        this._performancePriorityDisableCount++;
+        this._details.scene.performancePriority = ScenePerformancePriority.BackwardCompatible;
+
+        try {
+            return await operation();
+        } finally {
+            this._performancePriorityDisableCount--;
+            this._details.scene.executeWhenReady(() => {
+                const targetFrame = this._details.scene.getEngine().frameId + 20;
+                const endFrameObserver = this._details.scene.getEngine().onEndFrameObservable.add(() => {
+                    if (this._details.scene.getEngine().frameId >= targetFrame) {
+                        endFrameObserver.remove();
+                        if (this._performancePriorityDisableCount === 0) {
+                            this._details.scene.performancePriority = ScenePerformancePriority.Aggressive;
+                        }
+                    }
+                });
+            }, true);
+        }
     }
 }

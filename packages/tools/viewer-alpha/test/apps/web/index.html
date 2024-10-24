@@ -66,7 +66,6 @@
     <body ondragover="event.preventDefault()" ondrop="onDrop(event)">
         <babylon-viewer
             engine="WebGPU"
-            source="https://raw.githubusercontent.com/BabylonJS/Assets/master/meshes/ufo.glb"
             environment="../../../../../public/@babylonjs/viewer-alpha/assets/photoStudio.env"
             animation-speed="1.5"
             hotspots="testHotSpot1 1 228 113 111 0.217 0.341 0.442"
@@ -104,9 +103,10 @@
                 // The module referenced in the script tag above is loaded asynchronously, so we need to wait for it to load and for the custom element to be defined.
                 // Alternatively, we could just await import("/packages/tools/viewer-alpha/src/index.ts") here instead.
                 await customElements.whenDefined("babylon-viewer");
-                await new Promise((resolve) => setTimeout(resolve, 2000));
+                await new Promise((resolve) => setTimeout(resolve, 5000));
                 //viewerElement.source = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/BrainStem/glTF-Binary/BrainStem.glb";
                 //viewerElement.environment = "";
+                // viewerElement.environment = "https://assets.babylonjs.com/environments/ulmerMuenster.env";
                 // error case
                 //viewerElement.source = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/BrainStem/glTF-Binary/BrainStem2.glb";
                 await new Promise((resolve) => setTimeout(resolve, 2000));
