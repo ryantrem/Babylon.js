@@ -13,15 +13,9 @@ import { SerializationHelper } from "../../Misc/decorators.serialization";
 
 import "../../Engines/AbstractEngine/abstractEngine.cubeTexture";
 
-/**
- * Defines the available options when creating a cube texture
- */
-export interface ICubeTextureCreationOptions {
+interface ICubeTextureBaseOptions {
     /** Defines the suffixes add to the picture name in case six images are in use like _px.jpg */
     extensions?: string[];
-
-    /** noMipmap defines if mipmaps should be created or not */
-    noMipmap?: boolean;
 
     /** files defines the six files to load for the different faces in that order: px, py, pz, nx, ny, nz */
     files?: string[];
@@ -35,14 +29,25 @@ export interface ICubeTextureCreationOptions {
     /** onError defines a callback triggered in case of error during load */
     onError?: (message?: string, exception?: any) => void;
 
-    /** format defines the internal format to use for the texture once loaded */
-    format?: number;
+    /** onProgress defines a callback triggered as the texture is being loaded */
+    onProgress?: (event: ProgressEvent) => void;
 
     /** prefiltered defines whether or not the texture is created from prefiltered data */
     prefiltered?: boolean;
 
     /** forcedExtension defines the extensions to use (force a special type of file to load) in case it is different from the file name */
     forcedExtension?: any;
+}
+
+/**
+ * Defines the available options when creating a cube texture
+ */
+export interface ICubeTextureCreationOptions extends ICubeTextureBaseOptions {
+    /** noMipmap defines if mipmaps should be created or not */
+    noMipmap?: boolean;
+
+    /** format defines the internal format to use for the texture once loaded */
+    format?: number;
 
     /** createPolynomials defines whether or not to create polynomial harmonics from the texture data if necessary */
     createPolynomials?: boolean;
@@ -60,6 +65,10 @@ export interface ICubeTextureCreationOptions {
     useSRGBBuffer?: boolean;
 }
 
+export interface ICubeTextureUpdateOptions extends ICubeTextureBaseOptions {
+    delayLoad?: boolean;
+}
+
 // The default scale applied to environment texture. This manages the range of LOD level used for IBL according to the roughness
 const defaultLodScale = 0.8;
 
@@ -69,6 +78,7 @@ const defaultLodScale = 0.8;
 export class CubeTexture extends BaseTexture {
     private _delayedOnLoad: Nullable<() => void>;
     private _delayedOnError: Nullable<(message?: string, exception?: any) => void>;
+    private _delayedOnProgress: Nullable<(event: ProgressEvent) => void>;
     private _lodScale: number;
     private _lodOffset: number;
 
@@ -192,15 +202,36 @@ export class CubeTexture extends BaseTexture {
      * Creates and return a texture created from prefilterd data by tools like IBL Baker or Lys.
      * @param url defines the url of the prefiltered texture
      * @param scene defines the scene the texture is attached to
+     * @param options options to create the cube texture
+     * @returns the prefiltered texture
+     */
+    public static CreateFromPrefilteredData(url: string, scene: Scene, options?: Nullable<ICubeTextureCreationOptions>): CubeTexture;
+
+    /**
+     * Creates and return a texture created from prefilterd data by tools like IBL Baker or Lys.
+     * @param url defines the url of the prefiltered texture
+     * @param scene defines the scene the texture is attached to
      * @param forcedExtension defines the extension of the file if different from the url
      * @param createPolynomials defines whether or not to create polynomial harmonics from the texture data if necessary
      * @returns the prefiltered texture
      */
-    public static CreateFromPrefilteredData(url: string, scene: Scene, forcedExtension: any = null, createPolynomials: boolean = true) {
+    public static CreateFromPrefilteredData(url: string, scene: Scene, forcedExtension?: string, createPolynomials?: boolean): CubeTexture;
+
+    public static CreateFromPrefilteredData(
+        url: string,
+        scene: Scene,
+        forcedExtensionOrOptions: Nullable<string | ICubeTextureCreationOptions> = null,
+        createPolynomials: boolean = true
+    ) {
         const oldValue = scene.useDelayedTextureLoading;
         scene.useDelayedTextureLoading = false;
 
-        const result = new CubeTexture(url, scene, null, false, null, null, null, undefined, true, forcedExtension, createPolynomials);
+        let result: CubeTexture;
+        if (forcedExtensionOrOptions != null && typeof forcedExtensionOrOptions === "object") {
+            result = new CubeTexture(url, scene, forcedExtensionOrOptions);
+        } else {
+            result = new CubeTexture(url, scene, null, false, null, null, null, undefined, true, forcedExtensionOrOptions, createPolynomials);
+        }
 
         scene.useDelayedTextureLoading = oldValue;
 
@@ -237,7 +268,7 @@ export class CubeTexture extends BaseTexture {
         onError: Nullable<(message?: string, exception?: any) => void> = null,
         format: number = Constants.TEXTUREFORMAT_RGBA,
         prefiltered = false,
-        forcedExtension: any = null,
+        forcedExtension: Nullable<string> = null,
         createPolynomials: boolean = false,
         lodScale: number = defaultLodScale,
         lodOffset: number = 0,
@@ -301,6 +332,13 @@ export class CubeTexture extends BaseTexture {
     /**
      * Update the url (and optional buffer) of this texture if url was null during construction.
      * @param url the url of the texture
+     * @param options options used for updating
+     */
+    public updateURL(url: string, options?: ICubeTextureUpdateOptions): void;
+
+    /**
+     * Update the url (and optional buffer) of this texture if url was null during construction.
+     * @param url the url of the texture
      * @param forcedExtension defines the extension to use
      * @param onLoad callback called when the texture is loaded  (defaults to null)
      * @param prefiltered Defines whether the updated texture is prefiltered or not
@@ -312,7 +350,19 @@ export class CubeTexture extends BaseTexture {
      */
     public updateURL(
         url: string,
-        forcedExtension: Nullable<string> = null,
+        forcedExtension?: Nullable<string>,
+        onLoad?: Nullable<() => void>,
+        prefiltered?: boolean,
+        onError?: Nullable<(message?: string, exception?: any) => void>,
+        extensions?: Nullable<string[]>,
+        delayLoad?: boolean,
+        files?: Nullable<string[]>,
+        buffer?: Nullable<ArrayBufferView>
+    ): void;
+
+    public updateURL(
+        url: string,
+        forcedExtensionOrOptions: Nullable<string | ICubeTextureUpdateOptions> = null,
         onLoad: Nullable<() => void> = null,
         prefiltered: boolean = false,
         onError: Nullable<(message?: string, exception?: any) => void> = null,
@@ -325,6 +375,20 @@ export class CubeTexture extends BaseTexture {
             this.name = url;
         }
         this.url = url;
+
+        let forcedExtension: Nullable<string> = null;
+        let onProgress: Nullable<(event: ProgressEvent) => void> = null;
+        if (forcedExtensionOrOptions != null && typeof forcedExtensionOrOptions === "object") {
+            forcedExtension = forcedExtensionOrOptions.forcedExtension ?? null;
+            onLoad = forcedExtensionOrOptions.onLoad ?? null;
+            prefiltered = forcedExtensionOrOptions.prefiltered ?? false;
+            onError = forcedExtensionOrOptions.onError ?? null;
+            extensions = forcedExtensionOrOptions.extensions ?? null;
+            delayLoad = forcedExtensionOrOptions.delayLoad ?? false;
+            files = forcedExtensionOrOptions.files ?? null;
+            buffer = forcedExtensionOrOptions.buffer ?? null;
+            onProgress = forcedExtensionOrOptions.onProgress ?? null;
+        }
 
         if (forcedExtension) {
             this._forcedExtension = forcedExtension;
@@ -373,8 +437,9 @@ export class CubeTexture extends BaseTexture {
             this.delayLoadState = Constants.DELAYLOADSTATE_NOTLOADED;
             this._delayedOnLoad = onLoad;
             this._delayedOnError = onError;
+            this._delayedOnProgress = onProgress;
         } else {
-            this._loadTexture(onLoad, onError);
+            this._loadTexture(onLoad, onError, onProgress);
         }
     }
 
@@ -391,7 +456,7 @@ export class CubeTexture extends BaseTexture {
         }
 
         this.delayLoadState = Constants.DELAYLOADSTATE_LOADED;
-        this._loadTexture(this._delayedOnLoad, this._delayedOnError);
+        this._loadTexture(this._delayedOnLoad, this._delayedOnError, this._delayedOnProgress);
     }
 
     /**
@@ -442,7 +507,11 @@ export class CubeTexture extends BaseTexture {
         return this.getScene()?.useRightHandedSystem ? this._textureMatrixRefraction : this._textureMatrix;
     }
 
-    private _loadTexture(onLoad: Nullable<() => void> = null, onError: Nullable<(message?: string, exception?: any) => void> = null) {
+    private _loadTexture(
+        onLoad: Nullable<() => void> = null,
+        onError: Nullable<(message?: string, exception?: any) => void> = null,
+        onProgress: Nullable<(event: ProgressEvent) => void> = null
+    ) {
         const scene = this.getScene();
         const oldTexture = this._texture;
         this._texture = this._getFromCache(this.url, this._noMipmap, undefined, undefined, this._useSRGBBuffer, this.isCube);

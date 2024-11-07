@@ -258,7 +258,7 @@ AbstractEngine.prototype.createCubeTextureBase = function (
                     }
                 }
             } else {
-                this._loadFile(rootUrl, (data) => onloaddata(new Uint8Array(data as ArrayBuffer)), undefined, undefined, true, onInternalError);
+                this._loadFile(rootUrl, (data) => onloaddata(new Uint8Array(data as ArrayBuffer)), undefined, undefined, true, onInternalError); // Eventually onProgress gets passed in here (but maybe in other code paths as well)
             }
         });
     } else {
