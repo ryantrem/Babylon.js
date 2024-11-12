@@ -367,9 +367,9 @@ export class Viewer implements IDisposable {
             if (this._skybox) {
                 const material = this._skybox.material;
                 if (material instanceof PBRMaterial) {
-                    this._snapshotHelper.disableSnapshotRendering();
+                    //this._snapshotHelper.disableSnapshotRendering();
                     material.microSurface = 1.0 - value;
-                    this._snapshotHelper.enableSnapshotRendering();
+                    //this._snapshotHelper.enableSnapshotRendering();
                 }
             }
             this.onSkyboxBlurChanged.notifyObservers();
@@ -397,7 +397,7 @@ export class Viewer implements IDisposable {
     }
 
     public set toneMapping(value: ToneMapping) {
-        this._snapshotHelper.disableSnapshotRendering();
+        //this._snapshotHelper.disableSnapshotRendering();
 
         if (value === "none") {
             this._details.scene.imageProcessingConfiguration.toneMappingEnabled = false;
@@ -416,7 +416,7 @@ export class Viewer implements IDisposable {
             this._details.scene.imageProcessingConfiguration.toneMappingEnabled = true;
         }
 
-        this._snapshotHelper.enableSnapshotRendering();
+        //this._snapshotHelper.enableSnapshotRendering();
     }
 
     /**
@@ -427,9 +427,9 @@ export class Viewer implements IDisposable {
     }
 
     public set contrast(value: number) {
-        this._snapshotHelper.disableSnapshotRendering();
+        //this._snapshotHelper.disableSnapshotRendering();
         this._details.scene.imageProcessingConfiguration.contrast = value;
-        this._snapshotHelper.enableSnapshotRendering();
+        //this._snapshotHelper.enableSnapshotRendering();
     }
 
     /**
@@ -440,9 +440,9 @@ export class Viewer implements IDisposable {
     }
 
     public set exposure(value: number) {
-        this._snapshotHelper.disableSnapshotRendering();
+        //this._snapshotHelper.disableSnapshotRendering();
         this._details.scene.imageProcessingConfiguration.exposure = value;
-        this._snapshotHelper.enableSnapshotRendering();
+        //this._snapshotHelper.enableSnapshotRendering();
     }
 
     /**
@@ -610,7 +610,7 @@ export class Viewer implements IDisposable {
 
         await this._loadModelLock.lockAsync(async () => {
             throwIfAborted(abortSignal, abortController.signal);
-            this._snapshotHelper.disableSnapshotRendering();
+            //this._snapshotHelper.disableSnapshotRendering();
             this._details.model?.dispose();
             this._details.model = null;
             this.selectedAnimation = -1;
@@ -640,7 +640,7 @@ export class Viewer implements IDisposable {
             } finally {
                 this._isLoadingModel = false;
                 this.onLoadingProgressChanged.notifyObservers();
-                this._snapshotHelper.enableSnapshotRendering();
+                //this._snapshotHelper.enableSnapshotRendering();
             }
         });
     }
@@ -673,7 +673,7 @@ export class Viewer implements IDisposable {
 
         await this._loadEnvironmentLock.lockAsync(async () => {
             throwIfAborted(abortSignal, abortController.signal);
-            this._snapshotHelper.disableSnapshotRendering();
+            //this._snapshotHelper.disableSnapshotRendering();
             this._environment?.dispose();
             this._environment = null;
             this._details.scene.autoClear = true;
@@ -721,7 +721,7 @@ export class Viewer implements IDisposable {
                 this.onEnvironmentError.notifyObservers(e);
                 throw e;
             } finally {
-                this._snapshotHelper.enableSnapshotRendering();
+                //this._snapshotHelper.enableSnapshotRendering();
             }
         });
     }
