@@ -26,7 +26,9 @@ import { LockObject } from "shared-ui-components/tabs/propertyGrids/lockObject";
 import { HTML3DAnnotationElement } from "viewer/viewerAnnotationElement";
 
 import { PointerEventTypes } from "core/Events/pointerEvents";
+import { Color4 } from "core/Maths/math.color";
 import { Epsilon } from "core/Maths/math.constants";
+import { Vector3 } from "core/Maths/math.vector";
 import { WithinEpsilon } from "core/Maths/math.scalar.functions";
 import { CreateHotSpotQueryForPickingInfo } from "core/Meshes/abstractMesh.hotSpot";
 
@@ -52,24 +54,40 @@ const hotSpotTypeOptions = [{ label: "Surface", value: "surface" }] as const sat
 const hotSpotsDndModifers = [restrictToVerticalAxis, restrictToParentElement];
 
 function useConfiguration<T>(
+    key: string,
     defaultState: T,
     get: () => T,
-    set: ((data: T) => void) | undefined,
+    set?: (data: T) => void,
     equals: (left: T, right: T) => boolean = (left, right) => left === right,
+    stringify: (data: T) => string = (data) => JSON.stringify(data),
+    parse: (data: string) => T = (data) => JSON.parse(data),
     observables: Observable<any>[] = [],
     dependencies?: unknown[]
 ) {
+    key = `configuration/${key}`;
     const memoDefaultState = useMemo(() => defaultState, dependencies ?? []);
+    const memoInitialState = useMemo(() => {
+        const storedState = localStorage.getItem(key);
+        if (storedState) {
+            return parse(storedState) as T;
+        }
+        return defaultState;
+    }, [defaultState, key]);
     const memoSet = useCallback(set ?? (() => {}), dependencies ?? []);
     const memoGet = useCallback(get, dependencies ?? []);
     const memoEquals = useCallback(equals, []);
-    const [configuredState, setConfiguredState] = useState(memoDefaultState);
+    const [configuredState, setConfiguredState] = useState(memoInitialState);
     const liveState = useObservableState(memoGet, ...observables);
-    const [isConfigured, setIsConfigured] = useState(false);
+    const [isConfigured, setIsConfigured] = useState(!memoEquals(memoInitialState, memoDefaultState));
 
     useEffect(() => {
         memoSet?.(configuredState);
-    }, [configuredState, memoSet]);
+        if (!memoEquals(configuredState, memoDefaultState)) {
+            localStorage.setItem(key, stringify(configuredState));
+        } else {
+            localStorage.removeItem(key);
+        }
+    }, [configuredState, memoSet, memoEquals, memoDefaultState, key]);
 
     // Indicates whether the live state of the viewer can be "reverted" to the configured state.
     const canRevert = useMemo(() => {
@@ -340,11 +358,32 @@ export const Configurator: FunctionComponent<{ viewerElement: ViewerElement; vie
         };
     }, [viewerElement]);
 
-    const lightingUrlConfig = useConfiguration("", () => viewerElement.environment.lighting ?? "", undefined, undefined, [viewer.onEnvironmentChanged], [viewerElement]);
-    const skyboxUrlConfig = useConfiguration("", () => viewerElement.environment.skybox ?? "", undefined, undefined, [viewer.onEnvironmentChanged], [viewerElement]);
+    const lightingUrlConfig = useConfiguration(
+        "lightingUrl",
+        "",
+        () => viewerElement.environment.lighting ?? "",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        [viewer.onEnvironmentChanged],
+        [viewerElement]
+    );
+    const skyboxUrlConfig = useConfiguration(
+        "skyboxUrl",
+        "",
+        () => viewerElement.environment.skybox ?? "",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        [viewer.onEnvironmentChanged],
+        [viewerElement]
+    );
 
-    const [syncEnvironment, setSyncEnvironment] = useState(false);
-    const [needsEnvironmentUpdate, setNeedsEnvironmentUpdate] = useState(false);
+    const { configuredState: syncEnvironment, update: setSyncEnvironment } = useConfiguration("syncEnvironment", false, () => false);
+    //const [syncEnvironment, setSyncEnvironment] = useState(false);
+    const [needsEnvironmentUpdate, setNeedsEnvironmentUpdate] = useState(true);
 
     const onEnvironmentUrlSubmit = useCallback(() => {
         setNeedsEnvironmentUpdate(true);
@@ -358,37 +397,49 @@ export const Configurator: FunctionComponent<{ viewerElement: ViewerElement; vie
     }, [syncEnvironment, lightingUrlConfig.configuredState, skyboxUrlConfig.configuredState]);
 
     const skyboxBlurConfig = useConfiguration(
+        "skyboxBlur",
         viewer.environmentConfig.blur,
         () => viewer.environmentConfig.blur,
         (blur) => (viewer.environmentConfig = { blur }),
+        undefined,
+        undefined,
         undefined,
         [viewer.onEnvironmentConfigurationChanged],
         [viewer]
     );
 
     const environmentIntensityConfig = useConfiguration(
+        "environmentIntensity",
         viewer.environmentConfig.intensity,
         () => viewer.environmentConfig.intensity,
         (intensity) => (viewer.environmentConfig = { intensity }),
+        undefined,
+        undefined,
         undefined,
         [viewer.onEnvironmentConfigurationChanged],
         [viewer]
     );
 
     const environmentRotationConfig = useConfiguration(
+        "environmentRotation",
         viewer.environmentConfig.rotation,
         () => viewer.environmentConfig.rotation,
         (rotation) => (viewer.environmentConfig = { rotation }),
+        undefined,
+        undefined,
         undefined,
         [viewer.onEnvironmentConfigurationChanged],
         [viewer]
     );
 
     const clearColorConfig = useConfiguration(
-        viewerDetails.scene.clearColor,
-        () => viewerDetails.scene.clearColor,
-        (color) => (viewerDetails.scene.clearColor = color),
-        (left, right) => left.equals(right),
+        "clearColor",
+        viewerDetails.scene.clearColor.toHexString(),
+        () => viewerDetails.scene.clearColor.toHexString(),
+        (color) => (viewerDetails.scene.clearColor = Color4.FromHexString(color)),
+        undefined,
+        undefined,
+        undefined,
         [viewerDetails.scene.onClearColorChangedObservable],
         [viewerDetails.scene]
     );
@@ -398,18 +449,26 @@ export const Configurator: FunctionComponent<{ viewerElement: ViewerElement; vie
     }, [clearColorConfig.configuredState]);
 
     const cameraConfig = useConfiguration(
+        "camera",
         undefined,
         () => {
             return {
                 alpha: viewerDetails.camera.alpha,
                 beta: viewerDetails.camera.beta,
                 radius: viewerDetails.camera.radius,
-                target: viewerDetails.camera.target.clone(),
+                targetX: viewerDetails.camera.target.x,
+                targetY: viewerDetails.camera.target.y,
+                targetZ: viewerDetails.camera.target.z,
             };
         },
         (cameraState) => {
             if (cameraState) {
-                viewerDetails.camera.interpolateTo(cameraState.alpha, cameraState.beta, cameraState.radius, cameraState.target);
+                viewerDetails.camera.interpolateTo(
+                    cameraState.alpha,
+                    cameraState.beta,
+                    cameraState.radius,
+                    new Vector3(cameraState.targetX, cameraState.targetY, cameraState.targetZ)
+                );
             } else {
                 viewer.resetCamera();
             }
@@ -423,17 +482,24 @@ export const Configurator: FunctionComponent<{ viewerElement: ViewerElement; vie
                     WithinEpsilon(left.alpha, right.alpha, Epsilon * 10) &&
                     WithinEpsilon(left.beta, right.beta, Epsilon * 10) &&
                     WithinEpsilon(left.radius, right.radius, Epsilon) &&
-                    left.target.equalsWithEpsilon(right.target, Epsilon))
+                    WithinEpsilon(left.targetX, right.targetX, Epsilon) &&
+                    WithinEpsilon(left.targetY, right.targetY, Epsilon) &&
+                    WithinEpsilon(left.targetZ, right.targetZ, Epsilon))
             );
         },
+        undefined,
+        undefined,
         [viewerDetails.camera.onViewMatrixChangedObservable],
         [viewer, viewerDetails.camera, model]
     );
 
     const toneMappingConfig = useConfiguration(
+        "toneMapping",
         viewer.postProcessing.toneMapping,
         () => viewer.postProcessing.toneMapping,
         (toneMapping) => (viewer.postProcessing = { toneMapping }),
+        undefined,
+        undefined,
         undefined,
         [viewer.onPostProcessingChanged],
         [viewer]
@@ -444,52 +510,68 @@ export const Configurator: FunctionComponent<{ viewerElement: ViewerElement; vie
     }, [toneMappingConfig.configuredState]);
 
     const contrastConfig = useConfiguration(
+        "contrast",
         viewer.postProcessing.contrast,
         () => viewer.postProcessing.contrast,
         (contrast) => (viewer.postProcessing = { contrast }),
+        undefined,
+        undefined,
         undefined,
         [viewer.onPostProcessingChanged],
         [viewer]
     );
 
     const exposureConfig = useConfiguration(
+        "exposure",
         viewer.postProcessing.exposure,
         () => viewer.postProcessing.exposure,
         (exposure) => (viewer.postProcessing = { exposure }),
+        undefined,
+        undefined,
         undefined,
         [viewer.onPostProcessingChanged],
         [viewer]
     );
 
     const autoOrbitConfig = useConfiguration(
+        "autoOrbit",
         // TODO: Viewer should have autoOrbit false by default at the Viewer layer.
         false,
         () => viewer.cameraAutoOrbit.enabled,
         (enabled) => (viewer.cameraAutoOrbit = { enabled }),
+        undefined,
+        undefined,
         undefined,
         [viewer.onCameraAutoOrbitChanged],
         [viewer]
     );
 
     const autoOrbitSpeedConfig = useConfiguration(
+        "autoOrbitSpeed",
         viewer.cameraAutoOrbit.speed,
         () => viewer.cameraAutoOrbit.speed,
         (speed) => (viewer.cameraAutoOrbit = { speed }),
+        undefined,
+        undefined,
         undefined,
         [viewer.onCameraAutoOrbitChanged],
         [viewer]
     );
 
     const autoOrbitDelayConfig = useConfiguration(
+        "autoOrbitDelay",
         viewer.cameraAutoOrbit.delay,
         () => viewer.cameraAutoOrbit.delay,
         (delay) => (viewer.cameraAutoOrbit = { delay }),
+        undefined,
+        undefined,
         undefined,
         [viewer.onCameraAutoOrbitChanged],
         [viewer]
     );
 
     const animationStateConfig = useConfiguration(
+        "animationState",
         undefined,
         () => {
             return {
@@ -509,11 +591,14 @@ export const Configurator: FunctionComponent<{ viewerElement: ViewerElement; vie
         (left, right) => {
             return left == right || (!!left && !!right && WithinEpsilon(left.animationSpeed, right.animationSpeed, Epsilon) && left.selectedAnimation === right.selectedAnimation);
         },
+        undefined,
+        undefined,
         [viewer.onAnimationSpeedChanged, viewer.onSelectedAnimationChanged],
         [viewer]
     );
 
     const animationAutoPlayConfig = useConfiguration(
+        "animationAutoPlay",
         false,
         () => viewerElement.animationAutoPlay,
         (autoPlay) => {
@@ -521,11 +606,14 @@ export const Configurator: FunctionComponent<{ viewerElement: ViewerElement; vie
             autoPlay ? viewer.playAnimation() : viewer.pauseAnimation();
         },
         undefined,
+        undefined,
+        undefined,
         [viewer.onIsAnimationPlayingChanged],
         [viewer, viewerElement]
     );
 
     const selectedMaterialVariantConfig = useConfiguration(
+        "selectedMaterialVariant",
         "",
         () => viewer.selectedMaterialVariant,
         (materialVariant) => {
@@ -535,6 +623,8 @@ export const Configurator: FunctionComponent<{ viewerElement: ViewerElement; vie
                 viewer.selectedMaterialVariant = viewer.materialVariants[0];
             }
         },
+        undefined,
+        undefined,
         undefined,
         [viewer.onSelectedMaterialVariantChanged],
         [viewer]
@@ -594,7 +684,7 @@ export const Configurator: FunctionComponent<{ viewerElement: ViewerElement; vie
             }
         } else {
             if (clearColorConfig.canReset) {
-                attributes.push(`clear-color="${clearColorConfig.configuredState.toHexString()}"`);
+                attributes.push(`clear-color="${clearColorConfig.configuredState}"`);
             }
         }
 
@@ -611,9 +701,9 @@ export const Configurator: FunctionComponent<{ viewerElement: ViewerElement; vie
         }
 
         if (cameraConfig.configuredState) {
-            const { alpha, beta, radius, target } = cameraConfig.configuredState;
+            const { alpha, beta, radius, targetX, targetY, targetZ } = cameraConfig.configuredState;
             attributes.push(`camera-orbit="${alpha.toFixed(3)} ${beta.toFixed(3)} ${radius.toFixed(3)}"`);
-            attributes.push(`camera-target="${target.x.toFixed(3)} ${target.y.toFixed(3)} ${target.z.toFixed(3)}"`);
+            attributes.push(`camera-target="${targetX.toFixed(3)} ${targetY.toFixed(3)} ${targetZ.toFixed(3)}"`);
         }
 
         if (autoOrbitConfig.canReset) {
