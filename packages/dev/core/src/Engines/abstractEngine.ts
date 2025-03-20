@@ -1961,6 +1961,21 @@ export abstract class AbstractEngine {
         return this._hardwareScalingLevel;
     }
 
+    private _limitDeviceRatio = Number.MAX_VALUE;
+
+    /**
+     * Defines if the engine should no exceed a specified device ratio
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
+     */
+    public get limitDeviceRatio(): number {
+        return this._limitDeviceRatio;
+    }
+
+    public set limitDeviceRatio(value: number) {
+        this._limitDeviceRatio = value;
+        this.resize();
+    }
+
     /** @internal */
     public _doNotHandleContextLost = false;
 
@@ -2038,9 +2053,11 @@ export abstract class AbstractEngine {
 
         const devicePixelRatio = IsWindowObjectExist() ? window.devicePixelRatio || 1.0 : 1.0;
 
-        const limitDeviceRatio = options.limitDeviceRatio || devicePixelRatio;
+        if (options.limitDeviceRatio) {
+            this._limitDeviceRatio = options.limitDeviceRatio;
+        }
         // Viewport
-        this._lastDevicePixelRatio = adaptToDeviceRatio ? Math.min(limitDeviceRatio, devicePixelRatio) : 1.0;
+        this._lastDevicePixelRatio = adaptToDeviceRatio ? Math.min(this._limitDeviceRatio, devicePixelRatio) : 1.0;
         this._hardwareScalingLevel = 1.0 / this._lastDevicePixelRatio;
 
         this._creationOptions = options;
@@ -2056,8 +2073,8 @@ export abstract class AbstractEngine {
 
         // Re-query hardware scaling level to handle zoomed-in resizing.
         if (this.adaptToDeviceRatio) {
-            const devicePixelRatio = IsWindowObjectExist() ? window.devicePixelRatio || 1.0 : 1.0;
-            const changeRatio = this._lastDevicePixelRatio / Math.min(this._creationOptions.limitDeviceRatio ?? devicePixelRatio, devicePixelRatio);
+            const devicePixelRatio = Math.min(this._limitDeviceRatio, IsWindowObjectExist() ? window.devicePixelRatio || 1.0 : 1.0);
+            const changeRatio = this._lastDevicePixelRatio / devicePixelRatio;
             this._lastDevicePixelRatio = devicePixelRatio;
             this._hardwareScalingLevel *= changeRatio;
         }

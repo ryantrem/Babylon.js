@@ -43,7 +43,7 @@ import { deepMerge } from "core/Misc/deepMerger";
 import { AbortError } from "core/Misc/error";
 import { Logger } from "core/Misc/logger";
 import { Observable } from "core/Misc/observable";
-import { HardwareScalingOptimization, SceneOptimizer, SceneOptimizerOptions } from "core/Misc/sceneOptimizer";
+import { SceneOptimization, SceneOptimizer, SceneOptimizerOptions } from "core/Misc/sceneOptimizer";
 import { SnapshotRenderingHelper } from "core/Misc/snapshotRenderingHelper";
 import { GetExtensionFromUrl } from "core/Misc/urlTools";
 import { Scene } from "core/scene";
@@ -445,6 +445,17 @@ type ModelInternal = Model & {
     _shouldRender(): boolean;
 };
 
+class LimitDevicePixelRatioOptimization extends SceneOptimization {
+    public override apply(scene: Scene): boolean {
+        const limitDeviceRatio = Math.min(1 / scene.getEngine().getHardwareScalingLevel(), scene.getEngine().limitDeviceRatio);
+        if (limitDeviceRatio > 1) {
+            scene.getEngine().limitDeviceRatio = Math.max(1, limitDeviceRatio - 0.25);
+            return false;
+        }
+        return true;
+    }
+}
+
 /**
  * @experimental
  * Provides an experience for viewing a single 3D model.
@@ -531,8 +542,8 @@ export class Viewer implements IDisposable {
     protected readonly _camera: ArcRotateCamera;
     protected readonly _snapshotHelper: SnapshotRenderingHelper;
 
-    private readonly _defaultHardwareScalingLevel: number;
-    private _lastHardwareScalingLevel: number;
+    private readonly _defaultLimitDeviceRatio: number;
+    private _lastLimitDeviceRatio: number;
     private _renderedLastFrame: Nullable<boolean> = null;
     private _sceneOptimizer: Nullable<SceneOptimizer> = null;
 
@@ -580,7 +591,7 @@ export class Viewer implements IDisposable {
         private readonly _engine: AbstractEngine,
         options?: ViewerOptions
     ) {
-        this._defaultHardwareScalingLevel = this._lastHardwareScalingLevel = this._engine.getHardwareScalingLevel();
+        this._defaultLimitDeviceRatio = this._lastLimitDeviceRatio = this._engine.limitDeviceRatio;
         this._autoSuspendRendering = options?.autoSuspendRendering ?? true;
         {
             const scene = new Scene(this._engine);
@@ -1536,8 +1547,8 @@ export class Viewer implements IDisposable {
 
             const onRenderingResumed = () => {
                 this._log("Viewer Resumed Rendering");
-                // Resume rendering with the hardware scaling level from prior to suspending.
-                this._engine.setHardwareScalingLevel(this._lastHardwareScalingLevel);
+                // Resume rendering with the limit device ratio from prior to suspending.
+                this._engine.limitDeviceRatio = this._lastLimitDeviceRatio;
                 this._engine.performanceMonitor.enable();
                 this._snapshotHelper.enableSnapshotRendering();
                 this._startSceneOptimizer();
@@ -1547,15 +1558,15 @@ export class Viewer implements IDisposable {
                 this._log("Viewer Suspended Rendering");
                 this._renderedLastFrame = false;
                 renderedReadyFrame = false;
-                // Take note of the current hardware scaling level for when rendering is resumed.
-                this._lastHardwareScalingLevel = this._engine.getHardwareScalingLevel();
+                // Take note of the current limit device ratio for when rendering is resumed.
+                this._lastLimitDeviceRatio = this._engine.limitDeviceRatio;
                 this._stopSceneOptimizer();
                 this._snapshotHelper.disableSnapshotRendering();
-                // We want a high quality render right before suspending, so set the hardware scaling level back to the default,
+                // We want a high quality render right before suspending, so set the limit device ratio back to the default,
                 // disable the performance monitor (so the SceneOptimizer doesn't take into account this potentially slower frame),
                 // and then render the scene once.
                 this._engine.performanceMonitor.disable();
-                this._engine.setHardwareScalingLevel(this._defaultHardwareScalingLevel);
+                this._engine.limitDeviceRatio = this._defaultLimitDeviceRatio;
                 this._engine.beginFrame();
                 this._scene.render();
                 this._engine.endFrame();
@@ -1742,12 +1753,11 @@ export class Viewer implements IDisposable {
         this._stopSceneOptimizer();
 
         if (reset) {
-            this._engine.setHardwareScalingLevel(this._defaultHardwareScalingLevel);
+            this._engine.limitDeviceRatio = this._defaultLimitDeviceRatio;
         }
 
         const sceneOptimizerOptions = new SceneOptimizerOptions(60, 1000);
-        const hardwareScalingOptimization = new HardwareScalingOptimization(undefined, 1);
-        sceneOptimizerOptions.addOptimization(hardwareScalingOptimization);
+        sceneOptimizerOptions.addOptimization(new LimitDevicePixelRatioOptimization());
         this._sceneOptimizer = new SceneOptimizer(this._scene, sceneOptimizerOptions);
 
         this._sceneOptimizer.start();
