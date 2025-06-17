@@ -5,7 +5,58 @@ import type { BuildType, DevPackageName, UMDPackageName } from "./packageMapping
 import { getPackageMappingByDevName, getPublicPackageName, isValidDevPackageName, umdPackageMapping } from "./packageMapping.js";
 import * as path from "path";
 import { camelize } from "./utils.js";
-import type { RuleSetRule, Configuration } from "webpack";
+import type { RuleSetRule, Configuration, WebpackPluginInstance, Compiler } from "webpack";
+import * as os from "os";
+import * as process from "process";
+import * as v8 from "v8";
+
+function FormatBytes(bytes: number): string {
+    return (bytes / 1024 / 1024).toFixed(2) + " MB";
+}
+
+function LogMemoryStats() {
+    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    console.log(`[${now}] Memory Status for ${process.pid}`);
+    console.log(`Process Command: ${process.cwd()}: ${process.argv.join(" ")}`);
+    console.log(`System Memory: ${FormatBytes(os.totalmem())}`);
+    console.log(`System Free Memory: ${FormatBytes(os.freemem())}`);
+    console.log(`Max Node Heap Size: ${FormatBytes(v8.getHeapStatistics().heap_size_limit)}`);
+    console.log(`Process RSS Memory: ${FormatBytes(process.memoryUsage().rss)}`);
+    console.log(`Process Heap Total Memory: ${FormatBytes(process.memoryUsage().heapTotal)}`);
+    console.log(`Process Heap Used Memory: ${FormatBytes(process.memoryUsage().heapUsed)}`);
+    console.log(`Process External Memory: ${FormatBytes(process.memoryUsage().external)}`);
+}
+
+class PeriodicLoggerPlugin implements WebpackPluginInstance {
+    public apply(compiler: Compiler) {
+        console.log("Starting Memory Stats:");
+        LogMemoryStats();
+
+        let intervalId: ReturnType<typeof setInterval> | undefined;
+        compiler.hooks.beforeRun.tap("PeriodicLoggerPlugin", () => {
+            intervalId = setInterval(() => {
+                console.log("Periodic Memory Stats:");
+                LogMemoryStats();
+            }, 1000);
+        });
+        compiler.hooks.done.tap("PeriodicLoggerPlugin", () => {
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = undefined;
+            }
+            console.log("Final Memory Stats:");
+            LogMemoryStats();
+        });
+        compiler.hooks.failed.tap("PeriodicLoggerPlugin", () => {
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = undefined;
+            }
+            console.log("Final Memory Stats:");
+            LogMemoryStats();
+        });
+    }
+}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const externalsFunction = (excludePackages: string[] = [], type: BuildType = "umd") => {
@@ -304,6 +355,7 @@ export const commonUMDWebpackConfiguration = (options: {
                 mode: options.mode || "development",
             }),
         },
+        plugins: [new PeriodicLoggerPlugin()],
         ...options.extendedWebpackConfig,
     } as Configuration;
 };

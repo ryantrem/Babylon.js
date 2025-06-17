@@ -1,8 +1,46 @@
+/* eslint-disable no-console */
 import * as ts from "typescript";
 import * as path from "path";
 import * as fs from "fs";
 import type { BuildType, PublicPackageVariable } from "./packageMapping.js";
 import { getDevPackagesByBuildType, getPublicPackageName, isValidDevPackageName, declarationsOnlyPackages } from "./packageMapping.js";
+import * as os from "os";
+import * as process from "process";
+import * as v8 from "v8";
+
+function FormatBytes(bytes: number): string {
+    return (bytes / 1024 / 1024).toFixed(2) + " MB";
+}
+
+let LastLog: number | undefined = undefined;
+
+function LogMemoryStats() {
+    const memoryUsage = process.memoryUsage();
+    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    console.log(`[${now}] Memory Status for ${process.pid}`);
+    console.log(`Process Command: ${process.cwd()}: ${process.argv.join(" ")}`);
+    console.log(`System Memory: ${FormatBytes(os.totalmem())}`);
+    console.log(`System Free Memory: ${FormatBytes(os.freemem())}`);
+    console.log(`Max Node Heap Size: ${FormatBytes(v8.getHeapStatistics().heap_size_limit)}`);
+    console.log(`Process RSS Memory: ${FormatBytes(memoryUsage.rss)}`);
+    console.log(`Process Heap Total Memory: ${FormatBytes(memoryUsage.heapTotal)}`);
+    console.log(`Process Heap Used Memory: ${FormatBytes(memoryUsage.heapUsed)}`);
+    console.log(`Process External Memory: ${FormatBytes(memoryUsage.external)}`);
+    LastLog = performance.now();
+}
+
+console.log("Starting Memory Stats:");
+LogMemoryStats();
+
+// setInterval(() => {
+//     console.log("Periodic Memory Stats:");
+//     LogMemoryStats();
+// }, 1000);
+
+process.on("exit", () => {
+    console.log("Final Memory Stats:");
+    LogMemoryStats();
+});
 
 const AddJS = (to: string, forceAppend?: boolean | string): string => (forceAppend && !to.endsWith(".js") ? to + (forceAppend === true ? ".js" : forceAppend) : to);
 
@@ -130,6 +168,10 @@ function IsImportCall(node: ts.Node): node is ts.CallExpression {
 }
 
 function TransformerFactory<T extends TransformerNode>(context: ts.TransformationContext, options: ITransformerOptions): ts.Transformer<T> {
+    if (!LastLog || performance.now() - LastLog > 250) {
+        console.log("Periodic Memory Stats:");
+        LogMemoryStats();
+    }
     // const aliasResolver = new AliasResolver(context.getCompilerOptions());
     function transformSourceFile(sourceFile: ts.SourceFile) {
         function getResolvedPathNode(node: ts.StringLiteral) {
