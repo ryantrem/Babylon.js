@@ -72,7 +72,8 @@ export type ModularToolOptions = {
 export function MakeModularTool(options: ModularToolOptions): IDisposable {
     const { containerElement, serviceDefinitions, isThemeable = true, extensionFeeds = [] } = options;
 
-    const modularToolRootComponent: FunctionComponent = () => {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    const ModularToolRootComponent: FunctionComponent = () => {
         const classes = useStyles();
         const [extensionManagerContext, setExtensionManagerContext] = useState<ExtensionManagerContext>();
         const { isDarkMode } = useTernaryDarkMode();
@@ -224,7 +225,7 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
 
     // Create and render the react root component.
     const reactRoot = createRoot(containerElement);
-    reactRoot.render(createElement(modularToolRootComponent));
+    reactRoot.render(createElement(ModularToolRootComponent));
 
     return {
         dispose: () => {

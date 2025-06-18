@@ -1,5 +1,8 @@
 // eslint-disable-next-line import/no-internal-modules
 import type { IDisposable, IInspectorOptions, Nullable, Scene } from "core/index";
+
+import type { FunctionComponent } from "react";
+
 import type { ServiceDefinition } from "./modularity/serviceDefinition";
 import type { ModularToolOptions } from "./modularTool";
 import type { ISceneContext } from "./services/sceneContext";
@@ -110,7 +113,7 @@ function _ShowInspector(scene: Nullable<Scene>, options: Partial<IInspectorOptio
 
             const registration = shellService.addCentralContent({
                 key: "Canvas Injector",
-                component: () => {
+                component: (() => {
                     const classes = useStyles();
                     const canvasContainerRef = useRef<HTMLDivElement>(null);
                     useEffect(() => {
@@ -122,7 +125,7 @@ function _ShowInspector(scene: Nullable<Scene>, options: Partial<IInspectorOptio
                     }, []);
 
                     return <div ref={canvasContainerRef} className={classes.canvasContainer} />;
-                },
+                }) satisfies FunctionComponent,
             });
 
             return {

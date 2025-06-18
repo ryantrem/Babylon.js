@@ -1,6 +1,8 @@
 // eslint-disable-next-line import/no-internal-modules
 import type { IDisposable } from "core/index";
 
+import type { FunctionComponent } from "react";
+
 import type { IService, ServiceDefinition } from "../../../modularity/serviceDefinition";
 import type { ISelectionService } from "../../selectionService";
 import type { IShellService } from "../../shellService";
@@ -54,14 +56,14 @@ export const PropertiesServiceDefinition: ServiceDefinition<[IPropertiesService]
             icon: DocumentTextRegular,
             horizontalLocation: "right",
             suppressTeachingMoment: true,
-            content: () => {
+            content: (() => {
                 const sections = useOrderedObservableCollection(sectionsCollection);
                 const sectionContent = useObservableCollection(sectionContentCollection);
                 const entity = useObservableState(() => selectionService.selectedEntity, selectionService.onSelectedEntityChanged);
                 const applicableContent = entity ? sectionContent.filter((content) => content.predicate(entity)) : [];
 
                 return <PropertiesPane sections={sections} sectionContent={applicableContent} context={entity} />;
-            },
+            }) satisfies FunctionComponent,
         });
 
         return {

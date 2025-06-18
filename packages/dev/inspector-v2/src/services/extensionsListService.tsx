@@ -141,7 +141,7 @@ export const ExtensionListServiceDefinition: ServiceDefinition<[], [IShellServic
             verticalLocation: "top",
             suppressTeachingMoment: true,
             order: -200,
-            component: () => {
+            component: (() => {
                 const classes = useStyles();
 
                 const [selectedTab, setSelectedTab] = useState<TabValue>("available");
@@ -221,7 +221,7 @@ export const ExtensionListServiceDefinition: ServiceDefinition<[], [IShellServic
                         </Dialog>
                     </>
                 );
-            },
+            }) satisfies FunctionComponent,
         });
 
         return {

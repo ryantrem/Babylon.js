@@ -1,4 +1,5 @@
 import type { MenuButtonProps, MenuCheckedValueChangeData, MenuCheckedValueChangeEvent } from "@fluentui/react-components";
+import type { FunctionComponent } from "react";
 import type { TernaryDarkMode } from "usehooks-ts";
 import type { ServiceDefinition } from "../modularity/serviceDefinition";
 import type { IShellService } from "../services/shellService";
@@ -28,18 +29,21 @@ export const ThemeSelectorServiceDefinition: ServiceDefinition<[], [IShellServic
             verticalLocation: "top",
             suppressTeachingMoment: true,
             order: -300,
-            component: () => {
+            component: (() => {
                 const classes = useStyles();
 
                 const { isDarkMode, ternaryDarkMode, setTernaryDarkMode } = useTernaryDarkMode();
 
-                const onSelectedThemeChange = useCallback((e: MenuCheckedValueChangeEvent, data: MenuCheckedValueChangeData) => {
-                    setTernaryDarkMode(data.checkedItems.includes("System") ? "system" : (data.checkedItems[0].toLocaleLowerCase() as TernaryDarkMode));
-                }, []);
+                const onSelectedThemeChange = useCallback(
+                    (e: MenuCheckedValueChangeEvent, data: MenuCheckedValueChangeData) => {
+                        setTernaryDarkMode(data.checkedItems.includes("System") ? "system" : (data.checkedItems[0].toLocaleLowerCase() as TernaryDarkMode));
+                    },
+                    [setTernaryDarkMode]
+                );
 
                 const toggleTheme = useCallback(() => {
                     setTernaryDarkMode(isDarkMode ? "light" : "dark");
-                }, [isDarkMode]);
+                }, [isDarkMode, setTernaryDarkMode]);
 
                 return (
                     <Menu positioning="below-end" checkedValues={{ theme: [ternaryDarkMode] }} onCheckedValueChange={onSelectedThemeChange}>
@@ -74,7 +78,7 @@ export const ThemeSelectorServiceDefinition: ServiceDefinition<[], [IShellServic
                         </MenuPopover>
                     </Menu>
                 );
-            },
+            }) satisfies FunctionComponent,
         });
 
         return {

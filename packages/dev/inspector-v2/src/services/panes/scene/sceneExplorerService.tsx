@@ -1,6 +1,8 @@
 // eslint-disable-next-line import/no-internal-modules
 import type { IDisposable } from "core/index";
 
+import type { FunctionComponent } from "react";
+
 import type { EntityBase, SceneExplorerEntityCommand, SceneExplorerSection } from "../../../components/scene/sceneExplorer";
 import type { IService, ServiceDefinition } from "../../../modularity/serviceDefinition";
 import type { ISceneContext } from "../../sceneContext";
@@ -49,7 +51,7 @@ export const SceneExplorerServiceDefinition: ServiceDefinition<[ISceneExplorerSe
             icon: CubeTreeRegular,
             horizontalLocation: "left",
             suppressTeachingMoment: true,
-            content: () => {
+            content: (() => {
                 const sections = useOrderedObservableCollection(sectionsCollection);
                 const commands = useOrderedObservableCollection(commandsCollection);
                 const scene = useObservableState(() => sceneContext.currentScene, sceneContext.currentSceneObservable);
@@ -68,7 +70,7 @@ export const SceneExplorerServiceDefinition: ServiceDefinition<[ISceneExplorerSe
                         )}
                     </>
                 );
-            },
+            }) satisfies FunctionComponent,
         });
 
         return {

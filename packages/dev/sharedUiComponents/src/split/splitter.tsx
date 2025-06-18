@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef } from "react";
+import { useContext, useEffect } from "react";
 import * as styles from "./splitContainer.module.scss";
 import type { ControlledSize } from "./splitContext";
 import { SplitContext, SplitDirection } from "./splitContext";
@@ -49,7 +49,7 @@ export interface ISplitterProps {
  * @returns the splitter component
  */
 export const Splitter: React.FC<ISplitterProps> = (props) => {
-    const elementRef: React.RefObject<HTMLDivElement> = props.refObject || useRef(null);
+    const elementRef: React.RefObject<HTMLDivElement> = props.refObject ?? { current: null };
     const splitContext = useContext(SplitContext);
     let isCaptured = false;
     let startValue: number;

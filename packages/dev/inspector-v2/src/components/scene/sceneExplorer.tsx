@@ -159,7 +159,7 @@ export const SceneExplorer: FunctionComponent<{
                 token.dispose();
             }
         };
-    }, [sections, openItems]);
+    }, [sections, openItems, selectedEntity, setSelectedEntity, scene]);
 
     const visibleItems = useMemo(() => {
         const visibleItems: TreeItemData[] = [];
@@ -206,6 +206,9 @@ export const SceneExplorer: FunctionComponent<{
         }
 
         return visibleItems;
+        // sceneVersion is not directly used, but indicates a structural change to the scene graph,
+        // which requires a re-evaluation of the visible items.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [scene, sceneVersion, sections, openItems, itemsFilter]);
 
     const onOpenChange = useCallback(

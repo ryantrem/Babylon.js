@@ -493,6 +493,7 @@ const rules = {
         "plugin:jest/recommended",
         // "plugin:jsdoc/recommended",
         "plugin:prettier/recommended",
+        "plugin:react-hooks/recommended-legacy",
     ],
     settings: {
         react: {

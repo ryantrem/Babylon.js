@@ -1,3 +1,5 @@
+import type { FunctionComponent } from "react";
+
 import type { ServiceDefinition } from "../modularity/serviceDefinition";
 import type { ISceneContext } from "./sceneContext";
 import type { IShellService } from "./shellService";
@@ -28,7 +30,7 @@ export const CreationToolsServiceDefinition: ServiceDefinition<[], [IShellServic
             title: "Create",
             icon: FormNewRegular,
             horizontalLocation: "left",
-            content: () => {
+            content: (() => {
                 const classes = useStyles();
 
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -63,7 +65,7 @@ export const CreationToolsServiceDefinition: ServiceDefinition<[], [IShellServic
                         </Accordion>
                     </>
                 );
-            },
+            }) satisfies FunctionComponent,
         });
 
         return {

@@ -29,9 +29,7 @@ function GetTwinItemFromNode(node: AccessibilityEntity, scene: Scene) {
  */
 export function HTMLTwinItemAdapter(props: { node: AccessibilityEntity; scene: Scene; options: IHTMLTwinRendererOptions }): JSX.Element | null {
     const { node, scene, options } = props;
-    if (!node) {
-        return null;
-    }
+
     const [twinItem, setTwinItem] = useState<HTMLTwinItem>(GetTwinItemFromNode(node, scene));
     useEffect(() => {
         setTwinItem(GetTwinItemFromNode(node, scene));

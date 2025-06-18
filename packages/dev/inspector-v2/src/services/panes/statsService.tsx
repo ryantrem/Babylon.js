@@ -1,6 +1,8 @@
 // eslint-disable-next-line import/no-internal-modules
 import type { IDisposable, Scene } from "core/index";
 
+import type { FunctionComponent } from "react";
+
 import type { AccordionSection, AccordionSectionContent } from "../../components/accordionPane";
 import type { IService, ServiceDefinition } from "../../modularity/serviceDefinition";
 import type { ISceneContext } from "../sceneContext";
@@ -53,13 +55,13 @@ export const StatsServiceDefinition: ServiceDefinition<[IStatsService], [IShellS
             icon: DataBarHorizontalRegular,
             horizontalLocation: "right",
             suppressTeachingMoment: true,
-            content: () => {
+            content: (() => {
                 const sections = useOrderedObservableCollection(sectionsCollection);
                 const sectionContent = useObservableCollection(sectionContentCollection);
                 const scene = useObservableState(() => sceneContext.currentScene, sceneContext.currentSceneObservable);
 
                 return <>{scene && <StatsPane sections={sections} sectionContent={sectionContent} context={scene} />}</>;
-            },
+            }) satisfies FunctionComponent,
         });
 
         // Default/built-in sections.

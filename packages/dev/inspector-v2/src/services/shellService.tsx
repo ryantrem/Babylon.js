@@ -316,7 +316,7 @@ const ToolbarItem: FunctionComponent<{
 }> = ({ location, alignment, id, component: Component, displayName: displayName, suppressTeachingMoment }) => {
     const classes = useStyles();
 
-    const useTeachingMoment = useMemo(() => MakePopoverTeachingMoment(`Bar/${location}/${alignment}/${displayName ?? id}`), [displayName, id]);
+    const useTeachingMoment = useMemo(() => MakePopoverTeachingMoment(`Bar/${location}/${alignment}/${displayName ?? id}`), [location, alignment, displayName, id]);
     const teachingMoment = useTeachingMoment(suppressTeachingMoment);
 
     return (
@@ -388,7 +388,7 @@ const SidePaneTab: FunctionComponent<{ alignment: "left" | "right"; id: string }
     suppressTeachingMoment,
 }) => {
     const classes = useStyles();
-    const useTeachingMoment = useMemo(() => MakePopoverTeachingMoment(`Pane/${alignment}/${title ?? id}`), [title, id]);
+    const useTeachingMoment = useMemo(() => MakePopoverTeachingMoment(`Pane/${alignment}/${title ?? id}`), [alignment, title, id]);
     const teachingMoment = useTeachingMoment(suppressTeachingMoment);
 
     return (
@@ -434,7 +434,7 @@ function usePane(
 
     const onExpandCollapseClick = useCallback(() => {
         setCollapsed((collapsed) => !collapsed);
-    }, [collapsed]);
+    }, [setCollapsed]);
 
     const widthStorageKey = `Babylon/Settings/${alignment}Pane/Width`;
 
@@ -492,7 +492,7 @@ function usePane(
                 { once: true }
             );
         },
-        [resizing]
+        [alignment, minWidth, width, widthStorageKey]
     );
 
     // This memos the TabList to make it easy for the JSX to be inserted at the top of the pane (in "compact" mode) or returned to the caller to be used in the toolbar (in "full" mode).
@@ -535,7 +535,19 @@ function usePane(
                 )}
             </>
         );
-    }, [paneComponents, selectedTab, collapsed]);
+    }, [
+        paneComponents,
+        classes.paneTabListDiv,
+        classes.paneTabListDivLeft,
+        classes.paneTabListDivRight,
+        classes.paneCollapseButton,
+        alignment,
+        toolbarMode,
+        selectedTab?.key,
+        collapsed,
+        expandCollapseIcon,
+        onExpandCollapseClick,
+    ]);
 
     // This memoizes the pane itself, which may or may not include the tab list, depending on the toolbar mode.
     const pane = useMemo(() => {
@@ -587,7 +599,32 @@ function usePane(
                 )}
             </>
         );
-    }, [paneComponents, selectedTab, collapsed, width, resizing]);
+    }, [
+        paneComponents.length,
+        classes.pane,
+        classes.paneLeft,
+        classes.paneRight,
+        classes.paneContainer,
+        classes.paneContainerTransitions,
+        classes.barDiv,
+        classes.barDivider,
+        classes.paneContent,
+        classes.paneHeader,
+        classes.headerDivider,
+        classes.resizer,
+        classes.resizerLeft,
+        classes.resizerRight,
+        alignment,
+        resizing,
+        collapsed,
+        width,
+        toolbarMode,
+        topBarComponents,
+        paneTabList,
+        selectedTab,
+        bottomBarComponents,
+        onResizerPointerDown,
+    ]);
 
     return [paneTabList, pane];
 }
@@ -609,7 +646,8 @@ export function MakeShellServiceDefinition({
             const rightPaneComponentCollection = new ObservableCollection<SidePane>();
             const contentComponentCollection = new ObservableCollection<CentralContent>();
 
-            const rootComponent: FunctionComponent = () => {
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            const RootComponent: FunctionComponent = () => {
                 const classes = useStyles();
 
                 const topBarComponents = useOrderedObservableCollection(topBarComponentCollection);
@@ -704,7 +742,7 @@ export function MakeShellServiceDefinition({
                     }
                 },
                 addCentralContent: (entry) => contentComponentCollection.add(entry),
-                rootComponent,
+                rootComponent: RootComponent,
             };
         },
     };
