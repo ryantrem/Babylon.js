@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 
 import type { IDisposable } from "core/index";
 
-import type { AccordionSection, AccordionSectionContent } from "../../../components/accordionPane";
+import type { AccordionSection } from "../../../components/accordionPane";
 import type { IService, ServiceDefinition } from "../../../modularity/serviceDefinition";
 import type { ISelectionService } from "../../selectionService";
 import type { IShellService } from "../../shellService";
@@ -29,6 +29,9 @@ type PropertiesSectionContent<EntityT> = Readonly<{
      */
     predicate: (entity: unknown) => entity is EntityT;
 
+    /**
+     * The content that is added to individual sections.
+     */
     content: readonly Readonly<
         {
             /**
