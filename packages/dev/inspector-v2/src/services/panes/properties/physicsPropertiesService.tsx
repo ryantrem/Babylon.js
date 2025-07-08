@@ -1,11 +1,11 @@
 import type { ServiceDefinition } from "../../../modularity/serviceDefinition";
 import type { IPropertiesService } from "./propertiesService";
-import type { PhysicsTransformNode } from "../../../components/properties/physicsProperties";
 
 import { TransformNode } from "core/Meshes/transformNode";
 
-import { PropertiesServiceIdentity } from "./propertiesService";
 import { TransformNodePhysicsProperties } from "../../../components/properties/physicsProperties";
+import { useProperty } from "../../../hooks/compoundPropertyHooks";
+import { PropertiesServiceIdentity } from "./propertiesService";
 
 export const PhysicsPropertiesSectionIdentity = Symbol("Physics");
 
@@ -20,13 +20,24 @@ export const PhysicsPropertiesServiceDefinition: ServiceDefinition<[], [IPropert
 
         const contentRegistration = propertiesService.addSectionContent({
             key: "Physics Properties",
-            predicate: (entity: unknown): entity is PhysicsTransformNode => entity instanceof TransformNode && !!entity.physicsBody,
+            predicate: (entity: unknown) => entity instanceof TransformNode,
             content: [
                 // "Physics" section.
                 {
                     section: PhysicsPropertiesSectionIdentity,
                     order: 0,
-                    component: ({ context }) => <TransformNodePhysicsProperties node={context} />,
+                    conditional: true,
+                    component: ({ context: node, show, hide }) => {
+                        const physicsBody = useProperty(node, "physicsBody");
+
+                        if (!physicsBody) {
+                            hide();
+                            return null;
+                        }
+
+                        show();
+                        return <TransformNodePhysicsProperties physicsBody={physicsBody} />;
+                    },
                 },
             ],
         });

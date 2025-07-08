@@ -16,7 +16,7 @@ export type EntityBase = Readonly<{
     uniqueId: number;
 }>;
 
-export type EntityDisplayInfo = Readonly<
+export type SceneExplorerEntityDisplayInfo = Readonly<
     {
         /**
          * The name of the entity to display in the Scene Explorer tree.
@@ -67,7 +67,7 @@ export type SceneExplorerSection<T extends EntityBase> = Readonly<{
      * This is ideally "live" display info (e.g. updates to the display info are taken into account and communicated via the observable).
      * This means in many cases the display info will need to be disposed when it is no longer needed so observable registrations can be removed.
      */
-    getEntityDisplayInfo: (entity: T) => EntityDisplayInfo;
+    getEntityDisplayInfo: (entity: T) => SceneExplorerEntityDisplayInfo;
 
     /**
      * An optional icon component to render for the entity.
@@ -158,7 +158,7 @@ type EntityTreeItemData = {
     parent: TreeItemValue;
     hasChildren: boolean;
     icon?: ComponentType<{ entity: EntityBase }>;
-    getDisplayInfo: () => EntityDisplayInfo;
+    getDisplayInfo: () => SceneExplorerEntityDisplayInfo;
 };
 
 type TreeItemData = SceneTreeItemData | SectionTreeItemData | EntityTreeItemData;
@@ -218,7 +218,7 @@ const ToggleCommand: FunctionComponent<{ command: ToggleCommand<EntityBase>; ent
 const EntityTreeItemComponent: FunctionComponent<{ item: EntityTreeItemData }> = (props) => {
     const { item } = props;
 
-    const [displayInfo, setDisplayInfo] = useState<EntityDisplayInfo>();
+    const [displayInfo, setDisplayInfo] = useState<SceneExplorerEntityDisplayInfo>();
 
     useEffect(() => {
         const displayInfo = item.getDisplayInfo();
