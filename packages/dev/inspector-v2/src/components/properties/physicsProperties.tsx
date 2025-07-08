@@ -33,7 +33,7 @@ const PrestepOptions = [
  * @param props transform node
  * @returns controls
  */
-export const TransformNodePhysicsProperties: FunctionComponent<{ physicsBody: PhysicsBody }> = (props) => {
+export const PhysicsBodyProperties: FunctionComponent<{ physicsBody: PhysicsBody }> = (props) => {
     const { physicsBody } = props;
 
     const massProperties = useObservableState(

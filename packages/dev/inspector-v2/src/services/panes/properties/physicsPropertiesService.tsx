@@ -3,7 +3,7 @@ import type { IPropertiesService } from "./propertiesService";
 
 import { TransformNode } from "core/Meshes/transformNode";
 
-import { TransformNodePhysicsProperties } from "../../../components/properties/physicsProperties";
+import { PhysicsBodyProperties } from "../../../components/properties/physicsProperties";
 import { useProperty } from "../../../hooks/compoundPropertyHooks";
 import { PropertiesServiceIdentity } from "./propertiesService";
 
@@ -36,7 +36,7 @@ export const PhysicsPropertiesServiceDefinition: ServiceDefinition<[], [IPropert
                         }
 
                         show();
-                        return <TransformNodePhysicsProperties physicsBody={physicsBody} />;
+                        return <PhysicsBodyProperties physicsBody={physicsBody} />;
                     },
                 },
             ],
