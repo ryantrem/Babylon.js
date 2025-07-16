@@ -1,13 +1,13 @@
 import type { ServiceDefinition } from "../../../modularity/serviceDefinition";
-import type { IPropertiesService } from "./propertiesService";
 import type { ISelectionService } from "../../selectionService";
+import type { IPropertiesService } from "./propertiesService";
 
 import { Node } from "core/node";
 
-import { GeneralPropertiesSectionIdentity } from "./commonPropertiesService";
-import { PropertiesServiceIdentity } from "./propertiesService";
-import { SelectionServiceIdentity } from "../../selectionService";
 import { NodeGeneralProperties } from "../../../components/properties/nodeGeneralProperties";
+import { SelectionServiceIdentity } from "../../selectionService";
+import { GetMetadataForDefaultSectionContent } from "./defaultSectionsMetadata";
+import { PropertiesServiceIdentity } from "./propertiesService";
 
 export const NodePropertiesServiceDefinition: ServiceDefinition<[], [IPropertiesService, ISelectionService]> = {
     friendlyName: "Transform Node Properties",
@@ -19,8 +19,7 @@ export const NodePropertiesServiceDefinition: ServiceDefinition<[], [IProperties
             content: [
                 // "GENERAL" section.
                 {
-                    section: GeneralPropertiesSectionIdentity,
-                    order: 1,
+                    ...GetMetadataForDefaultSectionContent("general", "node"),
                     component: ({ context }) => <NodeGeneralProperties node={context} setSelectedEntity={(entity) => (selectionService.selectedEntity = entity)} />,
                 },
             ],

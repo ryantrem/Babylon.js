@@ -12,6 +12,7 @@ import { useObservableCollection, useObservableState, useOrderedObservableCollec
 import { ObservableCollection } from "../../../misc/observableCollection";
 import { SelectionServiceIdentity } from "../../selectionService";
 import { ShellServiceIdentity } from "../../shellService";
+import { DefaultSections } from "./defaultSectionsMetadata";
 
 export const PropertiesServiceIdentity = Symbol("PropertiesService");
 
@@ -85,6 +86,12 @@ export const PropertiesServiceDefinition: ServiceDefinition<[IPropertiesService]
                 return <PropertiesPane sections={sections} sectionContent={applicableContent} context={entity} />;
             },
         });
+
+        // Register the default sections.
+        for (const sectionKey in DefaultSections) {
+            const section = DefaultSections[sectionKey as keyof typeof DefaultSections];
+            sectionsCollection.add(section);
+        }
 
         return {
             addSection: (section) => sectionsCollection.add(section),

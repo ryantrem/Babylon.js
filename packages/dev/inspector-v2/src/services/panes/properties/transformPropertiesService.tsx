@@ -5,19 +5,13 @@ import { Bone } from "core/Bones/bone";
 import { TransformNode } from "core/Meshes/transformNode";
 import { TransformProperties } from "../../../components/properties/transformProperties";
 import { SettingsContextIdentity, type ISettingsContext } from "../../settingsContext";
+import { GetMetadataForDefaultSectionContent } from "./defaultSectionsMetadata";
 import { PropertiesServiceIdentity } from "./propertiesService";
-
-export const TransformPropertiesSectionIdentity = Symbol("Transform");
 
 export const TransformPropertiesServiceDefinition: ServiceDefinition<[], [IPropertiesService, ISettingsContext]> = {
     friendlyName: "Transform Properties",
     consumes: [PropertiesServiceIdentity, SettingsContextIdentity],
     factory: (propertiesService, settingsContent) => {
-        const transformSectionRegistration = propertiesService.addSection({
-            order: 1,
-            identity: TransformPropertiesSectionIdentity,
-        });
-
         const contentRegistration = propertiesService.addSectionContent({
             key: "Transform Properties",
             // TransformNode and Bone don't share a common base class, but both have the same transform related properties.
@@ -25,8 +19,7 @@ export const TransformPropertiesServiceDefinition: ServiceDefinition<[], [IPrope
             content: [
                 // "TRANSFORM" section.
                 {
-                    section: TransformPropertiesSectionIdentity,
-                    order: 1,
+                    ...GetMetadataForDefaultSectionContent("transform", "transformable"),
                     component: ({ context }) => <TransformProperties transform={context} settings={settingsContent} />,
                 },
             ],
@@ -35,7 +28,6 @@ export const TransformPropertiesServiceDefinition: ServiceDefinition<[], [IPrope
         return {
             dispose: () => {
                 contentRegistration.dispose();
-                transformSectionRegistration.dispose();
             },
         };
     },

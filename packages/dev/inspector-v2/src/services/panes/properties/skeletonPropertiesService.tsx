@@ -3,10 +3,8 @@ import type { IPropertiesService } from "./propertiesService";
 
 import { Skeleton } from "core/Bones/skeleton";
 import { SkeletonGeneralProperties, SkeletonViewerProperties } from "../../../components/properties/skeleton/skeletonProperties";
-import { GeneralPropertiesSectionIdentity } from "./commonPropertiesService";
+import { GetMetadataForDefaultSectionContent } from "./defaultSectionsMetadata";
 import { PropertiesServiceIdentity } from "./propertiesService";
-
-const ViewerPropertiesSectionIdentity = Symbol("Viewer");
 
 export const SkeletonPropertiesServiceDefinition: ServiceDefinition<[], [IPropertiesService]> = {
     friendlyName: "Skeleton Properties",
@@ -18,16 +16,10 @@ export const SkeletonPropertiesServiceDefinition: ServiceDefinition<[], [IProper
             content: [
                 // "GENERAL" section.
                 {
-                    section: GeneralPropertiesSectionIdentity,
-                    order: 1,
+                    ...GetMetadataForDefaultSectionContent("general", "skeleton"),
                     component: ({ context }) => <SkeletonGeneralProperties skeleton={context} />,
                 },
             ],
-        });
-
-        const viewerSectionRegistration = propertiesService.addSection({
-            order: 1,
-            identity: ViewerPropertiesSectionIdentity,
         });
 
         const viewerContentRegistration = propertiesService.addSectionContent({
@@ -36,8 +28,7 @@ export const SkeletonPropertiesServiceDefinition: ServiceDefinition<[], [IProper
             content: [
                 // "VIEWER" section.
                 {
-                    section: ViewerPropertiesSectionIdentity,
-                    order: 2,
+                    ...GetMetadataForDefaultSectionContent("skeletonViewer", "skeleton"),
                     component: ({ context }) => <SkeletonViewerProperties skeleton={context} />,
                 },
             ],
@@ -46,8 +37,6 @@ export const SkeletonPropertiesServiceDefinition: ServiceDefinition<[], [IProper
         return {
             dispose: () => {
                 viewerContentRegistration.dispose();
-                viewerSectionRegistration.dispose();
-
                 generalContentRegistration.dispose();
             },
         };

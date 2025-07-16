@@ -4,27 +4,20 @@ import type { IPropertiesService } from "../propertiesService";
 import { HemisphericLight } from "core/Lights/hemisphericLight";
 
 import { HemisphericLightSetupProperties } from "../../../../components/properties/lights/hemisphericLightSetupProperties";
+import { GetMetadataForDefaultSectionContent } from "../defaultSectionsMetadata";
 import { PropertiesServiceIdentity } from "../propertiesService";
-
-export const SetupPropertiesSectionIdentity = Symbol("Setup");
 
 export const HemisphericLightPropertiesServiceDefinition: ServiceDefinition<[], [IPropertiesService]> = {
     friendlyName: "Hemispheric Light Properties",
     consumes: [PropertiesServiceIdentity],
     factory: (propertiesService) => {
-        const setupSectionRegistration = propertiesService.addSection({
-            order: 2,
-            identity: SetupPropertiesSectionIdentity,
-        });
-
         const contentRegistration = propertiesService.addSectionContent({
             key: "Hemispheric Light Properties",
             predicate: (entity: unknown) => entity instanceof HemisphericLight,
             content: [
                 // "SETUP" section.
                 {
-                    section: SetupPropertiesSectionIdentity,
-                    order: 0,
+                    ...GetMetadataForDefaultSectionContent("setup", "hemisphericLight"),
                     component: HemisphericLightSetupProperties,
                 },
             ],
@@ -33,7 +26,6 @@ export const HemisphericLightPropertiesServiceDefinition: ServiceDefinition<[], 
         return {
             dispose: () => {
                 contentRegistration.dispose();
-                setupSectionRegistration.dispose();
             },
         };
     },

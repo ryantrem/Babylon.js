@@ -4,6 +4,7 @@ import type { IPropertiesService } from "./propertiesService";
 import { Scene } from "core/scene";
 
 import { CommonGeneralProperties } from "../../../components/properties/commonGeneralProperties";
+import { GetMetadataForDefaultSectionContent } from "./defaultSectionsMetadata";
 import { PropertiesServiceIdentity } from "./propertiesService";
 
 type CommonEntity = {
@@ -13,17 +14,10 @@ type CommonEntity = {
     getClassName?: () => string;
 };
 
-export const GeneralPropertiesSectionIdentity = Symbol("General");
-
 export const CommonPropertiesServiceDefinition: ServiceDefinition<[], [IPropertiesService]> = {
     friendlyName: "Common Properties",
     consumes: [PropertiesServiceIdentity],
     factory: (propertiesService) => {
-        const generalSectionRegistration = propertiesService.addSection({
-            order: 0,
-            identity: GeneralPropertiesSectionIdentity,
-        });
-
         const contentRegistration = propertiesService.addSectionContent({
             key: "Common Properties",
             predicate: (entity: unknown): entity is CommonEntity => {
@@ -38,8 +32,7 @@ export const CommonPropertiesServiceDefinition: ServiceDefinition<[], [IProperti
             content: [
                 // "GENERAL" section.
                 {
-                    section: GeneralPropertiesSectionIdentity,
-                    order: 0,
+                    ...GetMetadataForDefaultSectionContent("general", "common"),
                     component: ({ context }) => <CommonGeneralProperties commonEntity={context} />,
                 },
             ],
@@ -48,7 +41,6 @@ export const CommonPropertiesServiceDefinition: ServiceDefinition<[], [IProperti
         return {
             dispose: () => {
                 contentRegistration.dispose();
-                generalSectionRegistration.dispose();
             },
         };
     },

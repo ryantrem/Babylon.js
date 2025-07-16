@@ -4,7 +4,6 @@ import type { ISelectionService } from "../../selectionService";
 
 import { Sprite } from "core/Sprites";
 
-import { GeneralPropertiesSectionIdentity } from "./commonPropertiesService";
 import { PropertiesServiceIdentity } from "./propertiesService";
 import { SelectionServiceIdentity } from "../../selectionService";
 import { SpriteAnimationProperties } from "../../../components/properties/sprites/spriteAnimationProperties";
@@ -12,10 +11,7 @@ import { SpriteGeneralProperties } from "../../../components/properties/sprites/
 import { SpriteTransformProperties } from "../../../components/properties/sprites/spriteTransformProperties";
 import { SpriteOtherProperties } from "../../../components/properties/sprites/spriteOtherProperties";
 import { SettingsContextIdentity, type ISettingsContext } from "../../../services/settingsContext";
-
-export const SpriteTransformsPropertiesSectionItentity = Symbol("Transforms");
-export const SpriteOtherPropertiesSectionItentity = Symbol("Other");
-export const SpriteAnimationPropertiesSectionItentity = Symbol("Animation");
+import { GetMetadataForDefaultSectionContent } from "./defaultSectionsMetadata";
 
 export const SpritePropertiesServiceDefinition: ServiceDefinition<[], [IPropertiesService, ISelectionService, ISettingsContext]> = {
     friendlyName: "Sprite Properties",
@@ -27,34 +23,22 @@ export const SpritePropertiesServiceDefinition: ServiceDefinition<[], [IProperti
             content: [
                 // "GENERAL" section.
                 {
-                    section: GeneralPropertiesSectionIdentity,
-                    order: 0,
+                    ...GetMetadataForDefaultSectionContent("general", "sprite"),
                     component: ({ context }) => <SpriteGeneralProperties sprite={context} setSelectedEntity={(entity) => (selectionService.selectedEntity = entity)} />,
                 },
             ],
-        });
-
-        const transformsSectionOutlineRegistration = propertiesService.addSection({
-            order: 1,
-            identity: SpriteTransformsPropertiesSectionItentity,
         });
 
         const transformSectionContentRegistration = propertiesService.addSectionContent({
             key: "Transform Properties",
             predicate: (entity: unknown) => entity instanceof Sprite,
             content: [
-                // "TRANSFORMS" section.
+                // "TRANSFORM" section.
                 {
-                    section: SpriteTransformsPropertiesSectionItentity,
-                    order: 0,
+                    ...GetMetadataForDefaultSectionContent("transform", "sprite"),
                     component: ({ context }) => <SpriteTransformProperties sprite={context} settings={settingsContent} />,
                 },
             ],
-        });
-
-        const animationSectionOutlineRegistration = propertiesService.addSection({
-            order: 2,
-            identity: SpriteAnimationPropertiesSectionItentity,
         });
 
         const animationSectionContentRegistration = propertiesService.addSectionContent({
@@ -63,26 +47,19 @@ export const SpritePropertiesServiceDefinition: ServiceDefinition<[], [IProperti
             content: [
                 // "ANIMATION" section.
                 {
-                    section: SpriteAnimationPropertiesSectionItentity,
-                    order: 0,
+                    ...GetMetadataForDefaultSectionContent("animation", "sprite"),
                     component: ({ context }) => <SpriteAnimationProperties sprite={context} />,
                 },
             ],
-        });
-
-        const othersSectionOutlineRegistration = propertiesService.addSection({
-            order: 3,
-            identity: SpriteOtherPropertiesSectionItentity,
         });
 
         const otherSectionContentRegistration = propertiesService.addSectionContent({
             key: "Transform Properties",
             predicate: (entity: unknown) => entity instanceof Sprite,
             content: [
-                // "OTHER" section.
+                // "COLOR" section.
                 {
-                    section: SpriteOtherPropertiesSectionItentity,
-                    order: 0,
+                    ...GetMetadataForDefaultSectionContent("color", "sprite"),
                     component: ({ context }) => <SpriteOtherProperties sprite={context} />,
                 },
             ],
@@ -91,11 +68,8 @@ export const SpritePropertiesServiceDefinition: ServiceDefinition<[], [IProperti
         return {
             dispose: () => {
                 generalSectionContentRegistration.dispose();
-                transformsSectionOutlineRegistration.dispose();
                 transformSectionContentRegistration.dispose();
-                othersSectionOutlineRegistration.dispose();
                 otherSectionContentRegistration.dispose();
-                animationSectionOutlineRegistration.dispose();
                 animationSectionContentRegistration.dispose();
             },
         };

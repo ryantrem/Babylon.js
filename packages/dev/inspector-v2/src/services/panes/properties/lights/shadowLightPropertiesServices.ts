@@ -5,33 +5,20 @@ import { ShadowLight } from "core/Lights/shadowLight";
 
 import { ShadowGeneratorSetupProperties } from "../../../../components/properties/lights/shadowGeneratorSetupProperties";
 import { ShadowsSetupProperties } from "../../../../components/properties/lights/shadowsSetupProperties";
+import { GetMetadataForDefaultSectionContent } from "../defaultSectionsMetadata";
 import { PropertiesServiceIdentity } from "../propertiesService";
-
-export const ShadowsSetupPropertiesSectionIdentity = Symbol("Shadows");
-export const ShadowGeneratorSetupPropertiesSectionIdentity = Symbol("Shadow Generator");
 
 export const ShadowLightPropertiesServiceDefinition: ServiceDefinition<[], [IPropertiesService]> = {
     friendlyName: "Shadow Lights Properties",
     consumes: [PropertiesServiceIdentity],
     factory: (propertiesService) => {
-        const shadowsSectionRegistration = propertiesService.addSection({
-            order: 3,
-            identity: ShadowsSetupPropertiesSectionIdentity,
-        });
-
-        const shadowGeneratorSectionRegistration = propertiesService.addSection({
-            order: 4,
-            identity: ShadowGeneratorSetupPropertiesSectionIdentity,
-        });
-
         const shadowContentRegistration = propertiesService.addSectionContent({
             key: "Shadow Light Shadow Properties",
             predicate: (entity: unknown) => entity instanceof ShadowLight,
             content: [
-                // "SETUP" section.
+                // "SHADOWS" section.
                 {
-                    section: ShadowsSetupPropertiesSectionIdentity,
-                    order: 0,
+                    ...GetMetadataForDefaultSectionContent("shadows", "shadowLight"),
                     component: ShadowsSetupProperties,
                 },
             ],
@@ -41,10 +28,9 @@ export const ShadowLightPropertiesServiceDefinition: ServiceDefinition<[], [IPro
             key: "Shadow Light Shadow Generator Properties",
             predicate: (entity: unknown) => entity instanceof ShadowLight,
             content: [
-                // "SETUP" section.
+                // "SHADOW GENERATOR" section.
                 {
-                    section: ShadowGeneratorSetupPropertiesSectionIdentity,
-                    order: 0,
+                    ...GetMetadataForDefaultSectionContent("shadowGenerator", "shadowGenerator"),
                     component: ShadowGeneratorSetupProperties,
                 },
             ],
@@ -54,8 +40,6 @@ export const ShadowLightPropertiesServiceDefinition: ServiceDefinition<[], [IPro
             dispose: () => {
                 shadowContentRegistration.dispose();
                 shadowGeneratorContentRegistration.dispose();
-                shadowsSectionRegistration.dispose();
-                shadowGeneratorSectionRegistration.dispose();
             },
         };
     },
