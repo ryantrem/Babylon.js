@@ -529,14 +529,14 @@
             "type": "msedge",
             "request": "launch",
             "name": "Viewer Test App (Web) (Edge)",
-            "url": "http://localhost:1342/packages/tools/viewer/test/apps/web/index.html",
+            "url": "https://localhost:1342/packages/tools/viewer/test/apps/web/index.html",
             "preLaunchTask": "Viewer Test App (Web)"
         },
         {
             "type": "chrome",
             "request": "launch",
             "name": "Viewer Test App (Web) (Chrome)",
-            "url": "http://localhost:1342/packages/tools/viewer/test/apps/web/index.html",
+            "url": "https://localhost:1342/packages/tools/viewer/test/apps/web/index.html",
             "preLaunchTask": "Viewer Test App (Web)"
         },
         {

@@ -11,6 +11,7 @@ import type {
     Engine,
     HDRCubeTexture,
     HotSpotQuery,
+    IblCdfGenerator,
     IblShadowsRenderPipeline,
     IDisposable,
     IMeshDataCache,
@@ -21,7 +22,6 @@ import type {
     PickingInfo,
     ShaderMaterial,
     ShadowGenerator,
-    IblCdfGenerator,
 } from "core/index";
 
 import type { MaterialVariantsController } from "loaders/glTF/2.0/Extensions/KHR_materials_variants";
@@ -29,8 +29,8 @@ import type { MaterialVariantsController } from "loaders/glTF/2.0/Extensions/KHR
 import { ArcRotateCamera, ComputeAlpha, ComputeBeta } from "core/Cameras/arcRotateCamera";
 import { Constants } from "core/Engines/constants";
 import { PointerEventTypes } from "core/Events/pointerEvents";
-import { HemisphericLight } from "core/Lights/hemisphericLight";
 import { DirectionalLight } from "core/Lights/directionalLight";
+import { HemisphericLight } from "core/Lights/hemisphericLight";
 import { LoadAssetContainerAsync } from "core/Loading/sceneLoader";
 import { BackgroundMaterial } from "core/Materials/Background/backgroundMaterial";
 import { ImageProcessingConfiguration } from "core/Materials/imageProcessingConfiguration";
@@ -55,6 +55,9 @@ import { SnapshotRenderingHelper } from "core/Misc/snapshotRenderingHelper";
 import { GetExtensionFromUrl } from "core/Misc/urlTools";
 import { Scene } from "core/scene";
 import { registerBuiltInLoaders } from "loaders/dynamic";
+import { Lazy } from "core/Misc/lazy";
+
+const WebXRDefaultExperienceModulePromise = new Lazy(async () => await import("core/XR/webXRDefaultExperience"));
 
 export type ResetFlag = "source" | "environment" | "camera" | "animation" | "post-processing" | "material-variant" | "shadow";
 
@@ -2257,6 +2260,17 @@ export class Viewer implements IDisposable {
             pose.targetY ?? NaN,
             pose.targetZ ?? NaN
         );
+    }
+
+    public async enterXR(): Promise<void> {
+        const { WebXRDefaultExperience } = await WebXRDefaultExperienceModulePromise.value;
+        const xr = await WebXRDefaultExperience.CreateAsync(this._scene, {
+            disableDefaultUI: true,
+            disablePointerSelection: true,
+            disableNearInteraction: true,
+            disableHandTracking: true,
+        });
+        await xr.baseExperience.enterXRAsync("immersive-ar", "unbounded");
     }
 
     /**
