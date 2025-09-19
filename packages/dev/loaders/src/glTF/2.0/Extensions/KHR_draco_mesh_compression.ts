@@ -26,7 +26,7 @@ declare module "../../glTFFileLoader" {
 }
 
 interface IBufferViewDraco extends IBufferView {
-    _dracoBabylonGeometry?: Promise<Geometry>;
+    _dracoBabylonGeometry?: PromiseLike<Geometry>;
 }
 
 /**

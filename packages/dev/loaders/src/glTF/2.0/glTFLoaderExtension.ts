@@ -174,7 +174,7 @@ export interface IGLTFLoaderExtension extends IGLTFBaseLoaderExtension, IDisposa
         animation: IAnimation,
         channel: IAnimationChannel,
         onLoad: (babylonAnimatable: IAnimatable, babylonAnimation: Animation) => void
-    ): Nullable<Promise<void>>;
+    ): Nullable<PromiseLike<void>>;
 
     /**
      * @internal

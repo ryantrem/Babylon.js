@@ -30,7 +30,7 @@ declare module "../../glTFFileLoader" {
 }
 
 interface ILoaderClip extends IMSFTAudioEmitter_Clip, IArrayItem {
-    _objectURL?: Promise<string>;
+    _objectURL?: PromiseLike<string>;
 }
 
 interface ILoaderEmitter extends IMSFTAudioEmitter_Emitter, IArrayItem {
@@ -185,12 +185,12 @@ export class MSFT_audio_emitter implements IGLTFLoaderExtension {
     }
 
     // eslint-disable-next-line @typescript-eslint/promise-function-async, no-restricted-syntax
-    private _loadClipAsync(context: string, clip: ILoaderClip): Promise<string> {
+    private _loadClipAsync(context: string, clip: ILoaderClip): PromiseLike<string> {
         if (clip._objectURL) {
             return clip._objectURL;
         }
 
-        let promise: Promise<ArrayBufferView>;
+        let promise: PromiseLike<ArrayBufferView>;
         if (clip.uri) {
             promise = this._loader.loadUriAsync(context, clip, clip.uri);
         } else {
@@ -210,7 +210,7 @@ export class MSFT_audio_emitter implements IGLTFLoaderExtension {
     private _loadEmitterAsync(context: string, emitter: ILoaderEmitter): Promise<void> {
         emitter._babylonSounds = emitter._babylonSounds || [];
         if (!emitter._babylonData) {
-            const clipPromises = new Array<Promise<any>>();
+            const clipPromises = new Array<PromiseLike<any>>();
             const name = emitter.name || `emitter${emitter.index}`;
             const options = {
                 loop: false,

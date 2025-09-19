@@ -76,7 +76,7 @@ export class KHR_animation_pointer implements IGLTFLoaderExtension {
         animation: IAnimation,
         channel: IAnimationChannel,
         onLoad: (babylonAnimatable: IAnimatable, babylonAnimation: Animation) => void
-    ): Nullable<Promise<void>> {
+    ): Nullable<PromiseLike<void>> {
         const extension = channel.target.extensions?.KHR_animation_pointer as IKHRAnimationPointer;
         if (!extension || !this._pathToObjectConverter) {
             return null;

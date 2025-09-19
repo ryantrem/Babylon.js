@@ -20,7 +20,7 @@ declare module "../../glTFFileLoader" {
 }
 
 interface IBufferViewMeshopt extends IBufferView {
-    _meshOptData?: Promise<ArrayBufferView>;
+    _meshOptData?: PromiseLike<ArrayBufferView>;
 }
 
 /**

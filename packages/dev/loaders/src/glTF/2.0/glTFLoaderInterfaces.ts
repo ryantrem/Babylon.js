@@ -25,10 +25,10 @@ export interface IArrayItem {
  */
 export interface IAccessor extends GLTF2.IAccessor, IArrayItem {
     /** @internal */
-    _data?: Promise<ArrayBufferView>;
+    _data?: PromiseLike<ArrayBufferView>;
 
     /** @internal */
-    _babylonVertexBuffer?: { [kind: string]: Promise<VertexBuffer> };
+    _babylonVertexBuffer?: { [kind: string]: PromiseLike<VertexBuffer> };
 }
 
 /**
@@ -54,7 +54,7 @@ export interface _IAnimationSamplerData {
  */
 export interface IAnimationSampler extends GLTF2.IAnimationSampler, IArrayItem {
     /** @internal */
-    _data?: Promise<_IAnimationSamplerData>;
+    _data?: PromiseLike<_IAnimationSamplerData>;
 }
 
 /**
@@ -76,7 +76,7 @@ export interface IAnimation extends GLTF2.IAnimation, IArrayItem {
  */
 export interface IBuffer extends GLTF2.IBuffer, IArrayItem {
     /** @internal */
-    _data?: Promise<ArrayBufferView>;
+    _data?: PromiseLike<ArrayBufferView>;
 }
 
 /**
@@ -84,10 +84,10 @@ export interface IBuffer extends GLTF2.IBuffer, IArrayItem {
  */
 export interface IBufferView extends GLTF2.IBufferView, IArrayItem {
     /** @internal */
-    _data?: Promise<ArrayBufferView>;
+    _data?: PromiseLike<ArrayBufferView>;
 
     /** @internal */
-    _babylonBuffer?: Promise<Buffer>;
+    _babylonBuffer?: PromiseLike<Buffer>;
 }
 
 /**
@@ -103,7 +103,7 @@ export interface ICamera extends GLTF2.ICamera, IArrayItem {
  */
 export interface IImage extends GLTF2.IImage, IArrayItem {
     /** @internal */
-    _data?: Promise<ArrayBufferView>;
+    _data?: PromiseLike<ArrayBufferView>;
 }
 
 /**

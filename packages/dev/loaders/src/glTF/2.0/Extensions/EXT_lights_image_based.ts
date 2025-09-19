@@ -105,7 +105,7 @@ export class EXT_lights_image_based implements IGLTFLoaderExtension {
     // eslint-disable-next-line @typescript-eslint/promise-function-async, no-restricted-syntax
     private _loadLightAsync(context: string, light: IEXTLightsImageBased_LightImageBased): Promise<BaseTexture> {
         if (!light._loaded) {
-            const promises = new Array<Promise<any>>();
+            const promises = new Array<PromiseLike<any>>();
 
             this._loader.logOpen(`${context}`);
 
