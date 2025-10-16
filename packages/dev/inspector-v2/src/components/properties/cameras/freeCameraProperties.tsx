@@ -1,19 +1,18 @@
 import type { FunctionComponent } from "react";
 
 import type { FreeCamera } from "core/index";
-import type { ISettingsContext } from "../../../services/settingsContext";
 
 import { NumberInputPropertyLine } from "shared-ui-components/fluent/hoc/propertyLines/inputPropertyLine";
 import { SwitchPropertyLine } from "shared-ui-components/fluent/hoc/propertyLines/switchPropertyLine";
 import { QuaternionPropertyLine, RotationVectorPropertyLine, Vector3PropertyLine } from "shared-ui-components/fluent/hoc/propertyLines/vectorPropertyLine";
 import { useProperty } from "../../../hooks/compoundPropertyHooks";
-import { useObservableState } from "../../../hooks/observableHooks";
 import { BoundProperty } from "../boundProperty";
+import { useUseDegrees } from "../../../hooks/settingsHooks";
 
-export const FreeCameraTransformProperties: FunctionComponent<{ camera: FreeCamera; settings: ISettingsContext }> = (props) => {
-    const { camera, settings } = props;
+export const FreeCameraTransformProperties: FunctionComponent<{ camera: FreeCamera }> = (props) => {
+    const { camera } = props;
 
-    const useDegrees = useObservableState(() => settings.useDegrees, settings.settingsChangedObservable);
+    const [useDegrees] = useUseDegrees();
 
     const position = useProperty(camera, "position");
     const rotation = useProperty(camera, "rotation");

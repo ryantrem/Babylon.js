@@ -2,20 +2,17 @@ import type { IDisposable, Scene } from "core/index";
 import type { DynamicAccordionSection, DynamicAccordionSectionContent } from "../../components/extensibleAccordion";
 import type { IService, ServiceDefinition } from "../../modularity/serviceDefinition";
 import type { ISceneContext } from "../sceneContext";
-import type { ISettingsContext } from "../settingsContext";
 import type { IShellService } from "../shellService";
 
 import { SettingsRegular } from "@fluentui/react-icons";
 
-import { DataStorage } from "core/Misc/dataStorage";
-import { Observable } from "core/Misc/observable";
 import { SwitchPropertyLine } from "shared-ui-components/fluent/hoc/propertyLines/switchPropertyLine";
 import { AccordionSection } from "shared-ui-components/fluent/primitives/accordion";
 import { ExtensibleAccordion } from "../../components/extensibleAccordion";
 import { useObservableCollection, useObservableState, useOrderedObservableCollection } from "../../hooks/observableHooks";
+import { useIgnoreBackfacesForPicking, useShowPropertiesOnEntitySelection, useUseDegrees } from "../../hooks/settingsHooks";
 import { ObservableCollection } from "../../misc/observableCollection";
 import { SceneContextIdentity } from "../sceneContext";
-import { SettingsContextIdentity } from "../settingsContext";
 import { ShellServiceIdentity } from "../shellService";
 
 export const SettingsServiceIdentity = Symbol("SettingsService");
@@ -37,61 +34,13 @@ export interface ISettingsService extends IService<typeof SettingsServiceIdentit
     addSectionContent(content: DynamicAccordionSectionContent<Scene>): IDisposable;
 }
 
-export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISettingsService], [IShellService, ISceneContext]> = {
+export const SettingsServiceDefinition: ServiceDefinition<[ISettingsService], [IShellService, ISceneContext]> = {
     friendlyName: "Settings",
     consumes: [ShellServiceIdentity, SceneContextIdentity],
-    produces: [SettingsContextIdentity, SettingsServiceIdentity],
+    produces: [SettingsServiceIdentity],
     factory: (shellService, sceneContext) => {
         const sectionsCollection = new ObservableCollection<DynamicAccordionSection>();
         const sectionContentCollection = new ObservableCollection<DynamicAccordionSectionContent<Scene>>();
-
-        let useDegrees = DataStorage.ReadBoolean("Babylon/Settings/UseDegrees", false);
-        let ignoreBackfacesForPicking = DataStorage.ReadBoolean("Babylon/Settings/IgnoreBackfacesForPicking", false);
-        let showPropertiesOnEntitySelection = DataStorage.ReadBoolean("Babylon/Settings/ShowPropertiesOnEntitySelection", true);
-
-        const settings = {
-            get useDegrees() {
-                return useDegrees;
-            },
-            set useDegrees(value: boolean) {
-                if (useDegrees === value) {
-                    return; // No change, no need to notify
-                }
-                useDegrees = value;
-
-                DataStorage.WriteBoolean("Babylon/Settings/UseDegrees", useDegrees);
-
-                this.settingsChangedObservable.notifyObservers(this);
-            },
-            get ignoreBackfacesForPicking() {
-                return ignoreBackfacesForPicking;
-            },
-            set ignoreBackfacesForPicking(value: boolean) {
-                if (ignoreBackfacesForPicking === value) {
-                    return; // No change, no need to notify
-                }
-                ignoreBackfacesForPicking = value;
-
-                DataStorage.WriteBoolean("Babylon/Settings/IgnoreBackfacesForPicking", ignoreBackfacesForPicking);
-                this.settingsChangedObservable.notifyObservers(this);
-            },
-            get showPropertiesOnEntitySelection() {
-                return showPropertiesOnEntitySelection;
-            },
-            set showPropertiesOnEntitySelection(value: boolean) {
-                if (showPropertiesOnEntitySelection === value) {
-                    return; // No change, no need to notify
-                }
-                showPropertiesOnEntitySelection = value;
-
-                DataStorage.WriteBoolean("Babylon/Settings/ShowPropertiesOnEntitySelection", showPropertiesOnEntitySelection);
-                this.settingsChangedObservable.notifyObservers(this);
-            },
-            settingsChangedObservable: new Observable<ISettingsContext>(),
-            addSection: (section: DynamicAccordionSection) => sectionsCollection.add(section),
-            addSectionContent: (content: DynamicAccordionSectionContent<Scene>) => sectionContentCollection.add(content),
-            dispose: () => {},
-        };
 
         const registration = shellService.addSidePane({
             key: "Settings",
@@ -106,6 +55,10 @@ export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISe
                 const sectionContent = useObservableCollection(sectionContentCollection);
                 const scene = useObservableState(() => sceneContext.currentScene, sceneContext.currentSceneObservable);
 
+                const [useDegrees, setUseDegrees] = useUseDegrees();
+                const [ignoreBackfacesForPicking, setIgnoreBackfacesForPicking] = useIgnoreBackfacesForPicking();
+                const [showPropertiesOnEntitySelection, setShowPropertiesOnEntitySelection] = useShowPropertiesOnEntitySelection();
+
                 return (
                     <>
                         {scene && (
@@ -114,26 +67,20 @@ export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISe
                                     <SwitchPropertyLine
                                         label="Use Degrees"
                                         description="Using degrees instead of radians."
-                                        value={settings.useDegrees}
-                                        onChange={(checked) => {
-                                            settings.useDegrees = checked;
-                                        }}
+                                        value={useDegrees}
+                                        onChange={(checked) => setUseDegrees(checked)}
                                     />
                                     <SwitchPropertyLine
                                         label="Ignore Backfaces for Picking"
                                         description="Ignore backfaces when picking."
-                                        value={settings.ignoreBackfacesForPicking}
-                                        onChange={(checked) => {
-                                            settings.ignoreBackfacesForPicking = checked;
-                                        }}
+                                        value={ignoreBackfacesForPicking}
+                                        onChange={(checked) => setIgnoreBackfacesForPicking(checked)}
                                     />
                                     <SwitchPropertyLine
                                         label="Show Properties on Selection"
                                         description="Shows the Properties pane when an entity is selected."
-                                        value={settings.showPropertiesOnEntitySelection}
-                                        onChange={(checked) => {
-                                            settings.showPropertiesOnEntitySelection = checked;
-                                        }}
+                                        value={showPropertiesOnEntitySelection}
+                                        onChange={(checked) => setShowPropertiesOnEntitySelection(checked)}
                                     />
                                 </AccordionSection>
                             </ExtensibleAccordion>
@@ -143,8 +90,10 @@ export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISe
             },
         });
 
-        settings.dispose = () => registration.dispose();
-
-        return settings;
+        return {
+            addSection: (section: DynamicAccordionSection) => sectionsCollection.add(section),
+            addSectionContent: (content: DynamicAccordionSectionContent<Scene>) => sectionContentCollection.add(content),
+            dispose: () => registration.dispose(),
+        };
     },
 };
