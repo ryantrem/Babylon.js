@@ -8,7 +8,7 @@ import { InterceptFunction } from "../instrumentation/functionInstrumentation";
 import { SettingsContextIdentity } from "./settingsContext";
 import { ShellServiceIdentity } from "./shellService";
 
-export const SelectionServiceIdentity = Symbol("PropertiesService");
+export const SelectionServiceIdentity = Symbol("SelectionService");
 
 /**
  * Tracks the currently selected entity.

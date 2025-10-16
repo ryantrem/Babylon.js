@@ -1,10 +1,11 @@
-import type { ComponentType, FunctionComponent } from "react";
+import type { ComponentType, FunctionComponent, PropsWithChildren } from "react";
 import type { TernaryDarkMode } from "usehooks-ts";
 
 import type { IDisposable } from "core/index";
 import type { IExtensionFeed } from "./extensibility/extensionFeed";
 import type { IExtension, InstallFailedInfo } from "./extensibility/extensionManager";
 import type { WeaklyTypedServiceDefinition } from "./modularity/serviceContainer";
+import type { IContextService } from "./services/contextService";
 import type { IRootComponentService, ShellServiceOptions } from "./services/shellService";
 
 import {
@@ -33,6 +34,7 @@ import { ExtensionManagerContext } from "./contexts/extensionManagerContext";
 import { ExtensionManager } from "./extensibility/extensionManager";
 import { SetThemeMode } from "./hooks/themeHooks";
 import { ServiceContainer } from "./modularity/serviceContainer";
+import { ContextServiceDefinition, ContextServiceIdentity } from "./services/contextService";
 import { ExtensionListServiceDefinition } from "./services/extensionsListService";
 import { MakeShellServiceDefinition, RootComponentServiceIdentity } from "./services/shellService";
 import { ThemeSelectorServiceDefinition } from "./services/themeSelectorService";
@@ -104,11 +106,11 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
 
     const modularToolRootComponent: FunctionComponent = () => {
         const classes = useStyles();
-        const [extensionManagerContext, setExtensionManagerContext] = useState<ExtensionManagerContext>();
         const [requiredExtensions, setRequiredExtensions] = useState<string[]>();
         const [requiredExtensionsDeferred, setRequiredExtensionsDeferred] = useState<Deferred<boolean>>();
         const [extensionInstallError, setExtensionInstallError] = useState<InstallFailedInfo>();
 
+        const [providersComponent, setProvidersComponent] = useState<ComponentType>();
         const [rootComponent, setRootComponent] = useState<ComponentType>();
 
         // This is the main async initialization.
@@ -116,21 +118,11 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
             const initializeExtensionManagerAsync = async () => {
                 const serviceContainer = new ServiceContainer("ModularToolContainer");
 
+                // Register the context service (for managing context providers).
+                await serviceContainer.addServiceAsync(ContextServiceDefinition);
+
                 // Register the shell service (top level toolbar/side pane UI layout).
                 await serviceContainer.addServiceAsync(MakeShellServiceDefinition(options));
-
-                // Register a service that simply consumes the IRootComponentService and sets the root component as state so it can be rendered.
-                await serviceContainer.addServiceAsync<[], [IRootComponentService]>({
-                    friendlyName: "Root Component Bootstrapper",
-                    consumes: [RootComponentServiceIdentity],
-                    factory: (rootComponentService) => {
-                        // Use function syntax for the state setter since the root component may be a function component.
-                        setRootComponent(() => rootComponentService.rootComponent);
-                        return {
-                            dispose: () => setRootComponent(undefined),
-                        };
-                    },
-                });
 
                 // Register the extension list service (for browsing/installing extensions) if extension feeds are provided.
                 if (extensionFeeds.length > 0) {
@@ -179,8 +171,28 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
                     }
                 }
 
-                // Set the contexts.
-                setExtensionManagerContext({ extensionManager });
+                // Register a service that:
+                // 1. Consumes the IContextService and sets the providers component as state so it can be rendered.
+                // 2. Consumes the IRootComponentService and sets the root component as state so it can be rendered.
+                await serviceContainer.addServiceAsync<[], [IContextService, IRootComponentService]>({
+                    friendlyName: "Bootstrapper",
+                    consumes: [ContextServiceIdentity, RootComponentServiceIdentity],
+                    factory: (contextService, rootComponentService) => {
+                        // Add the extension manager context provider.
+                        const extensionManagerContextRegistration = contextService.addProvider(ExtensionManagerContext.Provider, () => extensionManager);
+
+                        // Use function syntax for the state setter since the root component may be a function component.
+                        setProvidersComponent(() => contextService.component);
+                        setRootComponent(() => rootComponentService.rootComponent);
+                        return {
+                            dispose: () => {
+                                setRootComponent(undefined);
+                                setProvidersComponent(undefined);
+                                extensionManagerContextRegistration.dispose();
+                            },
+                        };
+                    },
+                });
 
                 return () => {
                     extensionManager.dispose();
@@ -216,12 +228,15 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
             setExtensionInstallError(undefined);
         }, [setExtensionInstallError]);
 
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        const Providers: ComponentType<PropsWithChildren> = providersComponent ?? ((props) => <>{props.children}</>);
+
         // Show a spinner until a main view has been set.
         // eslint-disable-next-line @typescript-eslint/naming-convention
         const Content: ComponentType = rootComponent ?? (() => <Spinner className={classes.spinner} />);
 
         return (
-            <ExtensionManagerContext.Provider value={extensionManagerContext}>
+            <Providers>
                 <Theme className={classes.app}>
                     <>
                         <Dialog open={!!requiredExtensions} modalType="alert">
@@ -275,7 +290,7 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
                         </Suspense>
                     </>
                 </Theme>
-            </ExtensionManagerContext.Provider>
+            </Providers>
         );
     };
 

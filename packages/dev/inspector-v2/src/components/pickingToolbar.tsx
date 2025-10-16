@@ -10,6 +10,8 @@ import { PointerEventTypes } from "core/Events/pointerEvents";
 import { TmpVectors, Vector3 } from "core/Maths/math.vector";
 import { ToggleButton } from "shared-ui-components/fluent/primitives/toggleButton";
 
+import { useTempSize } from "../contexts/testContext";
+
 export const PickingToolbar: FunctionComponent<{
     scene: Scene;
     selectEntity: (entity: unknown) => void;
@@ -23,6 +25,9 @@ export const PickingToolbar: FunctionComponent<{
     const sceneElement = scene.getEngine().getRenderingCanvas()?.parentElement;
 
     const [pickingEnabled, setPickingEnabled] = useState(false);
+
+    const size = useTempSize();
+    console.log("Size mode (gizmo toolbar):", size);
 
     useEffect(() => {
         if (pickingEnabled && sceneElement) {

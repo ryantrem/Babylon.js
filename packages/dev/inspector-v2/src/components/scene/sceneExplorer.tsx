@@ -1,7 +1,7 @@
 import type { ScrollToInterface } from "@fluentui-contrib/react-virtualizer";
 import type { TreeItemValue, TreeOpenChangeData, TreeOpenChangeEvent } from "@fluentui/react-components";
 import type { FluentIcon } from "@fluentui/react-icons";
-import type { ComponentType, FunctionComponent } from "react";
+import type { ComponentType, CSSProperties, FunctionComponent } from "react";
 
 import type { IDisposable, IReadonlyObservable, Nullable, Scene } from "core/index";
 
@@ -31,6 +31,7 @@ import { ToggleButton } from "shared-ui-components/fluent/primitives/toggleButto
 import { useObservableState } from "../../hooks/observableHooks";
 import { useResource } from "../../hooks/resourceHooks";
 import { TraverseGraph } from "../../misc/graphUtils";
+import { useTempSize } from "../../contexts/testContext";
 
 export type EntityBase = Readonly<{
     uniqueId: number;
@@ -268,6 +269,13 @@ function MakeCommandElement(command: SceneExplorerCommand, isPlaceholder: boolea
     return command.type === "action" ? <ActionCommand key={command.displayName} command={command} /> : <ToggleCommand key={command.displayName} command={command} />;
 }
 
+function MakeCSSPropertiesForSize(size: "small" | "large"): CSSProperties {
+    return {
+        minHeight: size === "small" ? tokens.lineHeightBase500 : undefined,
+        maxHeight: size === "small" ? tokens.lineHeightBase500 : undefined,
+    };
+}
+
 const SceneTreeItem: FunctionComponent<{
     scene: Scene;
     isSelected: boolean;
@@ -278,12 +286,14 @@ const SceneTreeItem: FunctionComponent<{
 
     const classes = useStyles();
 
+    const size = useTempSize();
+
     return (
         <FlatTreeItem key="scene" value="scene" itemType="leaf" parentValue={undefined} aria-level={1} aria-setsize={1} aria-posinset={1} onClick={select}>
             <TreeItemLayout
                 iconBefore={<GlobeRegular />}
                 className={classes.sceneTreeItemLayout}
-                style={isSelected ? { backgroundColor: tokens.colorNeutralBackground1Selected } : undefined}
+                style={{ backgroundColor: isSelected ? tokens.colorNeutralBackground1Selected : undefined, ...MakeCSSPropertiesForSize(size) }}
             >
                 <Body1Strong wrap={false} truncate>
                     Scene
@@ -302,6 +312,8 @@ const SectionTreeItem: FunctionComponent<{
 }> = (props) => {
     const { section, isFiltering, expandAll, collapseAll } = props;
 
+    const size = useTempSize();
+
     return (
         <Menu openOnContext>
             <MenuTrigger disableButtonEnhancement>
@@ -315,7 +327,7 @@ const SectionTreeItem: FunctionComponent<{
                     aria-setsize={1}
                     aria-posinset={1}
                 >
-                    <TreeItemLayout>
+                    <TreeItemLayout style={MakeCSSPropertiesForSize(size)}>
                         <Body1Strong wrap={false} truncate>
                             {section.sectionName.substring(0, 100)}
                         </Body1Strong>
@@ -349,6 +361,8 @@ const EntityTreeItem: FunctionComponent<{
     const { entityItem, isSelected, select, isFiltering, commandProviders, expandAll, collapseAll } = props;
 
     const classes = useStyles();
+
+    const size = useTempSize();
 
     const hasChildren = !!entityItem.children?.length;
 
@@ -460,7 +474,10 @@ const EntityTreeItem: FunctionComponent<{
                 >
                     <TreeItemLayout
                         iconBefore={entityItem.icon ? <entityItem.icon entity={entityItem.entity} /> : null}
-                        style={isSelected ? { backgroundColor: tokens.colorNeutralBackground1Selected } : undefined}
+                        style={{
+                            backgroundColor: isSelected ? tokens.colorNeutralBackground1Selected : undefined,
+                            ...MakeCSSPropertiesForSize(size),
+                        }}
                         actions={actions}
                         aside={{
                             // Match the gap and padding of the actions.
@@ -499,6 +516,9 @@ export const SceneExplorer: FunctionComponent<{
     selectedEntity?: unknown;
     setSelectedEntity?: (entity: unknown) => void;
 }> = (props) => {
+    const size = useTempSize();
+    console.log("Size mode (scene explorer):", size);
+
     const classes = useStyles();
 
     const { sections, commandProviders, scene, selectedEntity } = props;

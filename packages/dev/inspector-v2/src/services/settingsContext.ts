@@ -22,6 +22,8 @@ export interface ISettingsContext extends IService<typeof SettingsContextIdentit
      */
     showPropertiesOnEntitySelection: boolean;
 
+    isCompactMode: boolean;
+
     /**
      * Observable that fires whenever a setting changes.
      */

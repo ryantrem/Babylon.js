@@ -18,6 +18,10 @@ import { SceneContextIdentity } from "../sceneContext";
 import { SettingsContextIdentity } from "../settingsContext";
 import { ShellServiceIdentity } from "../shellService";
 
+import { TempSizeContext } from "../../contexts/testContext";
+import type { IContextService } from "../contextService";
+import { ContextServiceIdentity } from "../contextService";
+
 export const SettingsServiceIdentity = Symbol("SettingsService");
 
 /**
@@ -37,17 +41,20 @@ export interface ISettingsService extends IService<typeof SettingsServiceIdentit
     addSectionContent(content: DynamicAccordionSectionContent<Scene>): IDisposable;
 }
 
-export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISettingsService], [IShellService, ISceneContext]> = {
+export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISettingsService], [IShellService, ISceneContext, IContextService]> = {
     friendlyName: "Settings",
-    consumes: [ShellServiceIdentity, SceneContextIdentity],
+    consumes: [ShellServiceIdentity, SceneContextIdentity, ContextServiceIdentity],
     produces: [SettingsContextIdentity, SettingsServiceIdentity],
-    factory: (shellService, sceneContext) => {
+    factory: (shellService, sceneContext, contextService) => {
         const sectionsCollection = new ObservableCollection<DynamicAccordionSection>();
         const sectionContentCollection = new ObservableCollection<DynamicAccordionSectionContent<Scene>>();
 
         let useDegrees = DataStorage.ReadBoolean("Babylon/Settings/UseDegrees", false);
         let ignoreBackfacesForPicking = DataStorage.ReadBoolean("Babylon/Settings/IgnoreBackfacesForPicking", false);
         let showPropertiesOnEntitySelection = DataStorage.ReadBoolean("Babylon/Settings/ShowPropertiesOnEntitySelection", true);
+        let isCompactMode = DataStorage.ReadBoolean("Babylon/Settings/IsCompactMode", !matchMedia("(pointer: coarse)").matches);
+
+        const sizeModeContextRegistration = contextService.addProvider(TempSizeContext.Provider, () => (isCompactMode ? "small" : "large"));
 
         const settings = {
             get useDegrees() {
@@ -87,13 +94,26 @@ export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISe
                 DataStorage.WriteBoolean("Babylon/Settings/ShowPropertiesOnEntitySelection", showPropertiesOnEntitySelection);
                 this.settingsChangedObservable.notifyObservers(this);
             },
+            get isCompactMode() {
+                return isCompactMode;
+            },
+            set isCompactMode(value: boolean) {
+                if (isCompactMode === value) {
+                    return; // No change, no need to notify
+                }
+                isCompactMode = value;
+
+                sizeModeContextRegistration.updateValue();
+                DataStorage.WriteBoolean("Babylon/Settings/IsCompactMode", isCompactMode);
+                this.settingsChangedObservable.notifyObservers(this);
+            },
             settingsChangedObservable: new Observable<ISettingsContext>(),
             addSection: (section: DynamicAccordionSection) => sectionsCollection.add(section),
             addSectionContent: (content: DynamicAccordionSectionContent<Scene>) => sectionContentCollection.add(content),
             dispose: () => {},
         };
 
-        const registration = shellService.addSidePane({
+        const sidePaneRegistration = shellService.addSidePane({
             key: "Settings",
             title: "Settings",
             icon: SettingsRegular,
@@ -135,6 +155,14 @@ export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISe
                                             settings.showPropertiesOnEntitySelection = checked;
                                         }}
                                     />
+                                    <SwitchPropertyLine
+                                        label="Compact Mode"
+                                        description="Use a more compact UI with less spacing."
+                                        value={settings.isCompactMode}
+                                        onChange={(checked) => {
+                                            settings.isCompactMode = checked;
+                                        }}
+                                    />
                                 </AccordionSection>
                             </ExtensibleAccordion>
                         )}
@@ -143,7 +171,10 @@ export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISe
             },
         });
 
-        settings.dispose = () => registration.dispose();
+        settings.dispose = () => {
+            sidePaneRegistration.dispose();
+            sizeModeContextRegistration.dispose();
+        };
 
         return settings;
     },
