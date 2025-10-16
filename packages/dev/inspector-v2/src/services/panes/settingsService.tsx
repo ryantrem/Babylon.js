@@ -45,7 +45,7 @@ export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISe
     friendlyName: "Settings",
     consumes: [ShellServiceIdentity, SceneContextIdentity, ReactContextServiceIdentity],
     produces: [SettingsContextIdentity, SettingsServiceIdentity],
-    factory: (shellService, sceneContext, contextService) => {
+    factory: (shellService, sceneContext, reactContextService) => {
         const sectionsCollection = new ObservableCollection<DynamicAccordionSection>();
         const sectionContentCollection = new ObservableCollection<DynamicAccordionSectionContent<Scene>>();
 
@@ -54,7 +54,7 @@ export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISe
         let showPropertiesOnEntitySelection = DataStorage.ReadBoolean("Babylon/Settings/ShowPropertiesOnEntitySelection", true);
         let isCompactMode = DataStorage.ReadBoolean("Babylon/Settings/IsCompactMode", !matchMedia("(pointer: coarse)").matches);
 
-        const sizeModeContextRegistration = contextService.addProvider(TempSizeContext.Provider, () => (isCompactMode ? "small" : "large"));
+        const sizeModeContextRegistration = reactContextService.addProvider(TempSizeContext.Provider, () => (isCompactMode ? "small" : "large"));
 
         const settings = {
             get useDegrees() {
