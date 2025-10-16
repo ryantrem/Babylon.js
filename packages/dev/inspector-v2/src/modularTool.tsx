@@ -5,7 +5,7 @@ import type { IDisposable } from "core/index";
 import type { IExtensionFeed } from "./extensibility/extensionFeed";
 import type { IExtension, InstallFailedInfo } from "./extensibility/extensionManager";
 import type { WeaklyTypedServiceDefinition } from "./modularity/serviceContainer";
-import type { IContextService } from "./services/contextService";
+import type { IReactContextService } from "./services/reactContextService";
 import type { IRootComponentService, ShellServiceOptions } from "./services/shellService";
 
 import {
@@ -34,8 +34,8 @@ import { ExtensionManagerContext } from "./contexts/extensionManagerContext";
 import { ExtensionManager } from "./extensibility/extensionManager";
 import { SetThemeMode } from "./hooks/themeHooks";
 import { ServiceContainer } from "./modularity/serviceContainer";
-import { ContextServiceDefinition, ContextServiceIdentity } from "./services/contextService";
 import { ExtensionListServiceDefinition } from "./services/extensionsListService";
+import { ReactContextServiceDefinition, ReactContextServiceIdentity } from "./services/reactContextService";
 import { MakeShellServiceDefinition, RootComponentServiceIdentity } from "./services/shellService";
 import { ThemeSelectorServiceDefinition } from "./services/themeSelectorService";
 
@@ -119,7 +119,7 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
                 const serviceContainer = new ServiceContainer("ModularToolContainer");
 
                 // Register the context service (for managing context providers).
-                await serviceContainer.addServiceAsync(ContextServiceDefinition);
+                await serviceContainer.addServiceAsync(ReactContextServiceDefinition);
 
                 // Register the shell service (top level toolbar/side pane UI layout).
                 await serviceContainer.addServiceAsync(MakeShellServiceDefinition(options));
@@ -174,9 +174,9 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
                 // Register a service that:
                 // 1. Consumes the IContextService and sets the providers component as state so it can be rendered.
                 // 2. Consumes the IRootComponentService and sets the root component as state so it can be rendered.
-                await serviceContainer.addServiceAsync<[], [IContextService, IRootComponentService]>({
+                await serviceContainer.addServiceAsync<[], [IReactContextService, IRootComponentService]>({
                     friendlyName: "Bootstrapper",
-                    consumes: [ContextServiceIdentity, RootComponentServiceIdentity],
+                    consumes: [ReactContextServiceIdentity, RootComponentServiceIdentity],
                     factory: (contextService, rootComponentService) => {
                         // Add the extension manager context provider.
                         const extensionManagerContextRegistration = contextService.addProvider(ExtensionManagerContext.Provider, () => extensionManager);

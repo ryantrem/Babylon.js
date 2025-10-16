@@ -7,7 +7,7 @@ import { ObservableCollection } from "../misc/observableCollection";
 import { useObservableCollection, useObservableState } from "../hooks/observableHooks";
 import { Observable } from "core/Misc/observable";
 
-export const ContextServiceIdentity = Symbol("ContextService");
+export const ReactContextServiceIdentity = Symbol("ReactContextService");
 
 export interface IProviderHandle extends IDisposable {
     updateValue(): void;
@@ -16,15 +16,14 @@ export interface IProviderHandle extends IDisposable {
 /**
  *
  */
-export interface IContextService extends IService<typeof ContextServiceIdentity> {
-    // addProvider<T>(provider: Provider<T>, initialValue: T): IProviderHandle<T>;
+export interface IReactContextService extends IService<typeof ReactContextServiceIdentity> {
     addProvider<T>(provider: Provider<T>, valueAccessor: () => T): IProviderHandle;
     readonly component: ComponentType<PropsWithChildren>;
 }
 
-export const ContextServiceDefinition: ServiceDefinition<[IContextService], []> = {
-    friendlyName: "Context Service",
-    produces: [ContextServiceIdentity],
+export const ReactContextServiceDefinition: ServiceDefinition<[IReactContextService], []> = {
+    friendlyName: "React Context Service",
+    produces: [ReactContextServiceIdentity],
     consumes: [],
     factory: () => {
         const providerCollection = new ObservableCollection<[Provider<unknown>, () => unknown, IReadonlyObservable<void>]>();

@@ -19,8 +19,8 @@ import { SettingsContextIdentity } from "../settingsContext";
 import { ShellServiceIdentity } from "../shellService";
 
 import { TempSizeContext } from "../../contexts/testContext";
-import type { IContextService } from "../contextService";
-import { ContextServiceIdentity } from "../contextService";
+import type { IReactContextService } from "../reactContextService";
+import { ReactContextServiceIdentity } from "../reactContextService";
 
 export const SettingsServiceIdentity = Symbol("SettingsService");
 
@@ -41,9 +41,9 @@ export interface ISettingsService extends IService<typeof SettingsServiceIdentit
     addSectionContent(content: DynamicAccordionSectionContent<Scene>): IDisposable;
 }
 
-export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISettingsService], [IShellService, ISceneContext, IContextService]> = {
+export const SettingsServiceDefinition: ServiceDefinition<[ISettingsContext, ISettingsService], [IShellService, ISceneContext, IReactContextService]> = {
     friendlyName: "Settings",
-    consumes: [ShellServiceIdentity, SceneContextIdentity, ContextServiceIdentity],
+    consumes: [ShellServiceIdentity, SceneContextIdentity, ReactContextServiceIdentity],
     produces: [SettingsContextIdentity, SettingsServiceIdentity],
     factory: (shellService, sceneContext, contextService) => {
         const sectionsCollection = new ObservableCollection<DynamicAccordionSection>();
