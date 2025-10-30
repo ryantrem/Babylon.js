@@ -264,105 +264,109 @@ export class KHR_materials_variants implements IGLTFLoaderExtension {
         return GLTFLoader.LoadExtensionAsync<IKHRMaterialVariants_Mapping, AbstractMesh>(context, primitive, this.name, async (extensionContext, extension) => {
             const promises = new Array<Promise<any>>();
             promises.push(
-                this._loader._loadMeshPrimitiveAsync(context, name, node, mesh, primitive, (babylonMesh) => {
-                    assign(babylonMesh);
+                Promise.resolve(
+                    this._loader._loadMeshPrimitiveAsync(context, name, node, mesh, primitive, (babylonMesh) => {
+                        assign(babylonMesh);
 
-                    if (babylonMesh instanceof Mesh) {
-                        const babylonDrawMode = GLTFLoader._GetDrawMode(context, primitive.mode);
+                        if (babylonMesh instanceof Mesh) {
+                            const babylonDrawMode = GLTFLoader._GetDrawMode(context, primitive.mode);
 
-                        const root = this._loader.rootBabylonMesh;
-                        const metadata = root ? (root._internalMetadata = root._internalMetadata || {}) : {};
-                        const gltf = (metadata.gltf = metadata.gltf || {});
-                        const extensionMetadata: IExtensionMetadata = (gltf[NAME] = gltf[NAME] || { lastSelected: null, original: [], variants: {} });
+                            const root = this._loader.rootBabylonMesh;
+                            const metadata = root ? (root._internalMetadata = root._internalMetadata || {}) : {};
+                            const gltf = (metadata.gltf = metadata.gltf || {});
+                            const extensionMetadata: IExtensionMetadata = (gltf[NAME] = gltf[NAME] || { lastSelected: null, original: [], variants: {} });
 
-                        // Store the original material.
-                        extensionMetadata.original.push({ mesh: babylonMesh, material: babylonMesh.material });
+                            // Store the original material.
+                            extensionMetadata.original.push({ mesh: babylonMesh, material: babylonMesh.material });
 
-                        // For each mapping, look at the variants and make a new entry for them.
-                        for (let mappingIndex = 0; mappingIndex < extension.mappings.length; ++mappingIndex) {
-                            const mapping = extension.mappings[mappingIndex];
-                            const material = ArrayItem.Get(`${extensionContext}/mappings/${mappingIndex}/material`, this._loader.gltf.materials, mapping.material);
-                            promises.push(
-                                this._loader._loadMaterialAsync(`#/materials/${mapping.material}`, material, babylonMesh, babylonDrawMode, (babylonMaterial) => {
-                                    for (let mappingVariantIndex = 0; mappingVariantIndex < mapping.variants.length; ++mappingVariantIndex) {
-                                        const variantIndex = mapping.variants[mappingVariantIndex];
-                                        const variant = ArrayItem.Get(`/extensions/${NAME}/variants/${variantIndex}`, this._variants, variantIndex);
-                                        extensionMetadata.variants[variant.name] = extensionMetadata.variants[variant.name] || [];
-                                        extensionMetadata.variants[variant.name].push({
-                                            mesh: babylonMesh,
-                                            material: babylonMaterial,
-                                        });
+                            // For each mapping, look at the variants and make a new entry for them.
+                            for (let mappingIndex = 0; mappingIndex < extension.mappings.length; ++mappingIndex) {
+                                const mapping = extension.mappings[mappingIndex];
+                                const material = ArrayItem.Get(`${extensionContext}/mappings/${mappingIndex}/material`, this._loader.gltf.materials, mapping.material);
+                                promises.push(
+                                    Promise.resolve(
+                                        this._loader._loadMaterialAsync(`#/materials/${mapping.material}`, material, babylonMesh, babylonDrawMode, (babylonMaterial) => {
+                                            for (let mappingVariantIndex = 0; mappingVariantIndex < mapping.variants.length; ++mappingVariantIndex) {
+                                                const variantIndex = mapping.variants[mappingVariantIndex];
+                                                const variant = ArrayItem.Get(`/extensions/${NAME}/variants/${variantIndex}`, this._variants, variantIndex);
+                                                extensionMetadata.variants[variant.name] = extensionMetadata.variants[variant.name] || [];
+                                                extensionMetadata.variants[variant.name].push({
+                                                    mesh: babylonMesh,
+                                                    material: babylonMaterial,
+                                                });
 
-                                        // Replace the target when original mesh is cloned
-                                        babylonMesh.onClonedObservable.add((newOne: Node) => {
-                                            const newMesh = newOne as Mesh;
-                                            let metadata: Nullable<IExtensionMetadata> = null;
-                                            let newRoot: Nullable<Node> = newMesh;
+                                                // Replace the target when original mesh is cloned
+                                                babylonMesh.onClonedObservable.add((newOne: Node) => {
+                                                    const newMesh = newOne as Mesh;
+                                                    let metadata: Nullable<IExtensionMetadata> = null;
+                                                    let newRoot: Nullable<Node> = newMesh;
 
-                                            // Find root to get medata
-                                            do {
-                                                newRoot = newRoot.parent;
-                                                if (!newRoot) {
-                                                    return;
-                                                }
-                                                metadata = KHR_materials_variants._GetExtensionMetadata(newRoot as Mesh);
-                                            } while (metadata === null);
+                                                    // Find root to get medata
+                                                    do {
+                                                        newRoot = newRoot.parent;
+                                                        if (!newRoot) {
+                                                            return;
+                                                        }
+                                                        metadata = KHR_materials_variants._GetExtensionMetadata(newRoot as Mesh);
+                                                    } while (metadata === null);
 
-                                            // Need to clone the metadata on the root (first time only)
-                                            if (root && metadata === KHR_materials_variants._GetExtensionMetadata(root)) {
-                                                // Copy main metadata
-                                                newRoot._internalMetadata = {};
-                                                for (const key in root._internalMetadata) {
-                                                    newRoot._internalMetadata[key] = root._internalMetadata[key];
-                                                }
+                                                    // Need to clone the metadata on the root (first time only)
+                                                    if (root && metadata === KHR_materials_variants._GetExtensionMetadata(root)) {
+                                                        // Copy main metadata
+                                                        newRoot._internalMetadata = {};
+                                                        for (const key in root._internalMetadata) {
+                                                            newRoot._internalMetadata[key] = root._internalMetadata[key];
+                                                        }
 
-                                                // Copy the gltf metadata
-                                                newRoot._internalMetadata.gltf = [];
-                                                for (const key in root._internalMetadata.gltf) {
-                                                    newRoot._internalMetadata.gltf[key] = root._internalMetadata.gltf[key];
-                                                }
+                                                        // Copy the gltf metadata
+                                                        newRoot._internalMetadata.gltf = [];
+                                                        for (const key in root._internalMetadata.gltf) {
+                                                            newRoot._internalMetadata.gltf[key] = root._internalMetadata.gltf[key];
+                                                        }
 
-                                                // Duplicate the extension specific metadata
-                                                newRoot._internalMetadata.gltf[NAME] = { lastSelected: null, original: [], variants: {} };
-                                                for (const original of metadata.original) {
-                                                    newRoot._internalMetadata.gltf[NAME].original.push({
-                                                        mesh: original.mesh,
-                                                        material: original.material,
-                                                    });
-                                                }
-                                                for (const key in metadata.variants) {
-                                                    if (Object.prototype.hasOwnProperty.call(metadata.variants, key)) {
-                                                        newRoot._internalMetadata.gltf[NAME].variants[key] = [];
-                                                        for (const variantEntry of metadata.variants[key]) {
-                                                            newRoot._internalMetadata.gltf[NAME].variants[key].push({
-                                                                mesh: variantEntry.mesh,
-                                                                material: variantEntry.material,
+                                                        // Duplicate the extension specific metadata
+                                                        newRoot._internalMetadata.gltf[NAME] = { lastSelected: null, original: [], variants: {} };
+                                                        for (const original of metadata.original) {
+                                                            newRoot._internalMetadata.gltf[NAME].original.push({
+                                                                mesh: original.mesh,
+                                                                material: original.material,
                                                             });
                                                         }
+                                                        for (const key in metadata.variants) {
+                                                            if (Object.prototype.hasOwnProperty.call(metadata.variants, key)) {
+                                                                newRoot._internalMetadata.gltf[NAME].variants[key] = [];
+                                                                for (const variantEntry of metadata.variants[key]) {
+                                                                    newRoot._internalMetadata.gltf[NAME].variants[key].push({
+                                                                        mesh: variantEntry.mesh,
+                                                                        material: variantEntry.material,
+                                                                    });
+                                                                }
+                                                            }
+                                                        }
+
+                                                        metadata = newRoot._internalMetadata.gltf[NAME];
                                                     }
-                                                }
 
-                                                metadata = newRoot._internalMetadata.gltf[NAME];
+                                                    // Relocate
+                                                    for (const target of metadata!.original) {
+                                                        if (target.mesh === babylonMesh) {
+                                                            target.mesh = newMesh;
+                                                        }
+                                                    }
+                                                    for (const target of metadata!.variants[variant.name]) {
+                                                        if (target.mesh === babylonMesh) {
+                                                            target.mesh = newMesh;
+                                                        }
+                                                    }
+                                                });
                                             }
-
-                                            // Relocate
-                                            for (const target of metadata!.original) {
-                                                if (target.mesh === babylonMesh) {
-                                                    target.mesh = newMesh;
-                                                }
-                                            }
-                                            for (const target of metadata!.variants[variant.name]) {
-                                                if (target.mesh === babylonMesh) {
-                                                    target.mesh = newMesh;
-                                                }
-                                            }
-                                        });
-                                    }
-                                })
-                            );
+                                        })
+                                    )
+                                );
+                            }
                         }
-                    }
-                })
+                    })
+                )
             );
             // eslint-disable-next-line github/no-then
             return await Promise.all(promises).then(([babylonMesh]) => {

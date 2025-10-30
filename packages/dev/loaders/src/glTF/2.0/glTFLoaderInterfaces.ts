@@ -10,6 +10,8 @@ import type { Light } from "core/Lights/light";
 
 import type * as GLTF2 from "babylonjs-gltf2interface";
 
+export type MaybePromise<T> = T | Promise<T>;
+
 /**
  * Loader interface with an index field.
  */
@@ -25,10 +27,10 @@ export interface IArrayItem {
  */
 export interface IAccessor extends GLTF2.IAccessor, IArrayItem {
     /** @internal */
-    _data?: Promise<ArrayBufferView>;
+    _data?: MaybePromise<ArrayBufferView>;
 
     /** @internal */
-    _babylonVertexBuffer?: { [kind: string]: Promise<VertexBuffer> };
+    _babylonVertexBuffer?: { [kind: string]: MaybePromise<VertexBuffer> };
 }
 
 /**
@@ -54,7 +56,7 @@ export interface _IAnimationSamplerData {
  */
 export interface IAnimationSampler extends GLTF2.IAnimationSampler, IArrayItem {
     /** @internal */
-    _data?: Promise<_IAnimationSamplerData>;
+    _data?: MaybePromise<_IAnimationSamplerData>;
 }
 
 /**
@@ -76,7 +78,7 @@ export interface IAnimation extends GLTF2.IAnimation, IArrayItem {
  */
 export interface IBuffer extends GLTF2.IBuffer, IArrayItem {
     /** @internal */
-    _data?: Promise<ArrayBufferView>;
+    _data?: MaybePromise<ArrayBufferView>;
 }
 
 /**
@@ -84,10 +86,10 @@ export interface IBuffer extends GLTF2.IBuffer, IArrayItem {
  */
 export interface IBufferView extends GLTF2.IBufferView, IArrayItem {
     /** @internal */
-    _data?: Promise<ArrayBufferView>;
+    _data?: MaybePromise<ArrayBufferView>;
 
     /** @internal */
-    _babylonBuffer?: Promise<Buffer>;
+    _babylonBuffer?: MaybePromise<Buffer>;
 }
 
 /**
@@ -103,7 +105,7 @@ export interface ICamera extends GLTF2.ICamera, IArrayItem {
  */
 export interface IImage extends GLTF2.IImage, IArrayItem {
     /** @internal */
-    _data?: Promise<ArrayBufferView>;
+    _data?: MaybePromise<ArrayBufferView>;
 }
 
 /**
@@ -148,7 +150,7 @@ export interface IMaterial extends GLTF2.IMaterial, IArrayItem {
         [babylonDrawMode: number]: {
             babylonMaterial: Material;
             babylonMeshes: AbstractMesh[];
-            promise: Promise<void>;
+            promise: MaybePromise<void>;
         };
     };
 }
@@ -168,7 +170,7 @@ export interface IMeshPrimitive extends GLTF2.IMeshPrimitive, IArrayItem {
     /** @internal */
     _instanceData?: {
         babylonSourceMesh: Mesh;
-        promise: Promise<any>;
+        promise: MaybePromise<any>;
     };
 }
 
@@ -231,7 +233,7 @@ export interface ISkin extends GLTF2.ISkin, IArrayItem {
     /** @internal */
     _data?: {
         babylonSkeleton: Skeleton;
-        promise: Promise<void>;
+        promise: MaybePromise<void>;
     };
 }
 

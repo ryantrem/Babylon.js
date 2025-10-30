@@ -255,26 +255,26 @@ export class MSFT_lod implements IGLTFLoaderExtension {
                     this._materialIndexLOD = indexLOD;
                 }
 
-                const promise = this._loader
-                    ._loadMaterialAsync(`/materials/${materialLOD.index}`, materialLOD, babylonMesh, babylonDrawMode, (babylonMaterial) => {
+                const promise = Promise.resolve(
+                    this._loader._loadMaterialAsync(`/materials/${materialLOD.index}`, materialLOD, babylonMesh, babylonDrawMode, (babylonMaterial) => {
                         if (indexLOD === 0) {
                             assign(babylonMaterial);
                         }
                     })
-                    .then((babylonMaterial) => {
-                        if (indexLOD !== 0) {
-                            assign(babylonMaterial);
+                ).then((babylonMaterial) => {
+                    if (indexLOD !== 0) {
+                        assign(babylonMaterial);
 
-                            // TODO: should not rely on _data
-                            const previousDataLOD = materialLODs[indexLOD - 1]._data!;
-                            if (previousDataLOD[babylonDrawMode]) {
-                                this._disposeMaterials([previousDataLOD[babylonDrawMode].babylonMaterial]);
-                                delete previousDataLOD[babylonDrawMode];
-                            }
+                        // TODO: should not rely on _data
+                        const previousDataLOD = materialLODs[indexLOD - 1]._data!;
+                        if (previousDataLOD[babylonDrawMode]) {
+                            this._disposeMaterials([previousDataLOD[babylonDrawMode].babylonMaterial]);
+                            delete previousDataLOD[babylonDrawMode];
                         }
+                    }
 
-                        return babylonMaterial;
-                    });
+                    return babylonMaterial;
+                });
 
                 this._materialPromiseLODs[indexLOD] = this._materialPromiseLODs[indexLOD] || [];
 

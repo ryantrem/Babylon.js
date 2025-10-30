@@ -81,7 +81,7 @@ export class EXT_mesh_gpu_instancing implements IGLTFLoaderExtension {
                 }
 
                 const accessor = ArrayItem.Get(`${extensionContext}/attributes/${attribute}`, this._loader.gltf.accessors, extension.attributes[attribute]);
-                promises.push(this._loader._loadFloatAccessorAsync(`/accessors/${accessor.bufferView}`, accessor));
+                promises.push(Promise.resolve(this._loader._loadFloatAccessorAsync(`/accessors/${accessor.bufferView}`, accessor)));
 
                 if (instanceCount === 0) {
                     instanceCount = accessor.count;

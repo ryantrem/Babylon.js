@@ -102,16 +102,18 @@ export class KHR_animation_pointer implements IGLTFLoaderExtension {
             if (!obj.info.interpolation) {
                 throw new Error(`${extensionContext}/pointer: Interpolation is missing`);
             }
-            return this._loader._loadAnimationChannelFromTargetInfoAsync(
-                context,
-                animationContext,
-                animation,
-                channel,
-                {
-                    object: obj.object,
-                    info: obj.info.interpolation,
-                },
-                onLoad
+            return Promise.resolve(
+                this._loader._loadAnimationChannelFromTargetInfoAsync(
+                    context,
+                    animationContext,
+                    animation,
+                    channel,
+                    {
+                        object: obj.object,
+                        info: obj.info.interpolation,
+                    },
+                    onLoad
+                )
             );
         } catch (e) {
             Logger.Warn(`${extensionContext}/pointer: Invalid pointer (${pointer}) skipped`);
