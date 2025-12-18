@@ -1,4 +1,4 @@
-import type { ComponentType, FunctionComponent, PropsWithChildren } from "react";
+import type { ComponentType, FunctionComponent } from "react";
 import type { TernaryDarkMode } from "usehooks-ts";
 
 import type { IDisposable } from "core/index";
@@ -21,12 +21,8 @@ import {
     makeStyles,
     Spinner,
     tokens,
-    RendererProvider,
-    PortalMountNodeProvider,
 } from "@fluentui/react-components";
 import { ErrorCircleRegular } from "@fluentui/react-icons";
-import { createCSSStyleSheetFromTheme, ThemelessFluentProvider } from "@fluentui-contrib/react-themeless-provider";
-import { createShadowDOMRenderer } from "@griffel/shadow-dom";
 import { createElement, Suspense, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -35,11 +31,10 @@ import { Logger } from "core/Misc/logger";
 import { Theme } from "./components/theme";
 import { ExtensionManagerContext } from "./contexts/extensionManagerContext";
 import { ExtensionManager } from "./extensibility/extensionManager";
-import { SetThemeMode, useThemeMode } from "./hooks/themeHooks";
+import { SetThemeMode } from "./hooks/themeHooks";
 import { ServiceContainer } from "./modularity/serviceContainer";
 import { MakeShellServiceDefinition, RootComponentServiceIdentity } from "./services/shellService";
 import { ThemeSelectorServiceDefinition } from "./services/themeSelectorService";
-import { DarkTheme, LightTheme } from "./themes/babylonTheme";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const useStyles = makeStyles({
@@ -105,41 +100,6 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
     if (themeMode) {
         SetThemeMode(themeMode);
     }
-
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    const FluentRoot: FunctionComponent<PropsWithChildren> = (() => {
-        const containerRootNode = containerElement.getRootNode();
-        if (containerRootNode instanceof ShadowRoot) {
-            const originalAdoptedStyleSheets = [...document.adoptedStyleSheets];
-            const renderer = createShadowDOMRenderer(containerRootNode, { insertionPoint: undefined });
-
-            return (props) => {
-                const classes = useStyles();
-                const { isDarkMode } = useThemeMode();
-
-                useEffect(() => {
-                    const themeSheet = createCSSStyleSheetFromTheme(":root", isDarkMode ? DarkTheme : LightTheme);
-                    document.adoptedStyleSheets = [...originalAdoptedStyleSheets, themeSheet];
-                    return () => {
-                        document.adoptedStyleSheets = originalAdoptedStyleSheets;
-                    };
-                }, [isDarkMode]);
-
-                return (
-                    <RendererProvider renderer={renderer}>
-                        <PortalMountNodeProvider value={containerRootNode}>
-                            <ThemelessFluentProvider className={classes.app}>{props.children}</ThemelessFluentProvider>
-                        </PortalMountNodeProvider>
-                    </RendererProvider>
-                );
-            };
-        } else {
-            return (props) => {
-                const classes = useStyles();
-                return <Theme className={classes.app}>{props.children}</Theme>;
-            };
-        }
-    })();
 
     const modularToolRootComponent: FunctionComponent = () => {
         const classes = useStyles();
@@ -262,7 +222,7 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
 
         return (
             <ExtensionManagerContext.Provider value={extensionManagerContext}>
-                <FluentRoot>
+                <Theme className={classes.app}>
                     <>
                         <Dialog open={!!requiredExtensions} modalType="alert">
                             <DialogSurface>
@@ -314,7 +274,7 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
                             <Content />
                         </Suspense>
                     </>
-                </FluentRoot>
+                </Theme>
             </ExtensionManagerContext.Provider>
         );
     };
