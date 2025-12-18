@@ -102,19 +102,19 @@ export function ShowInspector(scene: Scene, options: Partial<InspectorOptions> =
     // Sequentialize showing the inspector (e.g. don't start showing until after a previous hide (for example) is finished).
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     InspectorLock.lockAsync(async () => {
-        let parentElement = options.containerElement ?? null;
-        // If a container element was not found, find an appropriate one above the engine's rendering canvas.
-        if (!parentElement) {
-            parentElement = scene.getEngine().getRenderingCanvas()?.parentElement ?? null;
-            while (parentElement) {
-                const rootNode = parentElement.getRootNode();
-                // TODO: Right now we never parent the inspector within a ShadowRoot because we need to do more work to get FluentProvider to work correctly in this context.
-                if (!(rootNode instanceof ShadowRoot)) {
-                    break;
-                }
-                parentElement = rootNode.host.parentElement;
-            }
-        }
+        const parentElement = options.containerElement ?? scene.getEngine().getRenderingCanvas()?.parentElement;
+        // // If a container element was not found, find an appropriate one above the engine's rendering canvas.
+        // if (!parentElement) {
+        //     parentElement = scene.getEngine().getRenderingCanvas()?.parentElement ?? null;
+        //     while (parentElement) {
+        //         const rootNode = parentElement.getRootNode();
+        //         // TODO: Right now we never parent the inspector within a ShadowRoot because we need to do more work to get FluentProvider to work correctly in this context.
+        //         if (!(rootNode instanceof ShadowRoot)) {
+        //             break;
+        //         }
+        //         parentElement = rootNode.host.parentElement;
+        //     }
+        // }
 
         // If we couldn't find a parent element, we can't show the inspector.
         if (!parentElement) {
