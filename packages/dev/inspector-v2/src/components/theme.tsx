@@ -4,7 +4,7 @@ import type { FunctionComponent } from "react";
 import { createCSSStyleSheetFromTheme, ThemelessFluentProvider } from "@fluentui-contrib/react-themeless-provider";
 import { FluentProvider, PortalMountNodeProvider, RendererProvider } from "@fluentui/react-components";
 import { createShadowDOMRenderer } from "@griffel/shadow-dom";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useId, useInsertionEffect, useLayoutEffect, useState } from "react";
 import { useThemeMode } from "../hooks/themeHooks";
 import { DarkTheme, LightTheme } from "../themes/babylonTheme";
 
@@ -22,11 +22,12 @@ export const Theme: FunctionComponent<ThemeProps & { invert?: boolean }> = (prop
                 const renderer = createShadowDOMRenderer(containerRootNode, { insertionPoint: undefined });
 
                 const fluentRootComponent: FunctionComponent<ThemeProps> = (props) => {
+                    const { children, ...rest } = props;
                     const { isDarkMode } = useThemeMode();
-
-                    useEffect(() => {
+                    const id = `A${useId().replace(/:/g, "")}`;
+                    useInsertionEffect(() => {
                         // Use :host instead of :root - :root doesn't work inside ShadowRoot
-                        const themeSheet = createCSSStyleSheetFromTheme(":host", isDarkMode !== invert ? DarkTheme : LightTheme);
+                        const themeSheet = createCSSStyleSheetFromTheme(`#${id}`, isDarkMode !== invert ? DarkTheme : LightTheme);
                         // Add to ShadowRoot's adoptedStyleSheets, not document's
                         containerRootNode.adoptedStyleSheets = [...containerRootNode.adoptedStyleSheets, themeSheet];
                         return () => {
@@ -36,10 +37,16 @@ export const Theme: FunctionComponent<ThemeProps & { invert?: boolean }> = (prop
                     }, [isDarkMode]);
 
                     return (
+                        // <RendererProvider renderer={renderer}>
+                        //     <PortalMountNodeProvider value={containerRootNode}>
+                        //         <ThemelessFluentProvider {...props} />
+                        //     </PortalMountNodeProvider>
+                        // </RendererProvider>
                         <RendererProvider renderer={renderer}>
-                            <PortalMountNodeProvider value={containerRootNode}>
-                                <ThemelessFluentProvider {...props} />
-                            </PortalMountNodeProvider>
+                            {/* <FluentProvider theme={isDarkMode !== invert ? DarkTheme : LightTheme} {...props} targetDocument={containerRootNode.ownerDocument}></FluentProvider> */}
+                            <ThemelessFluentProvider id={id} {...rest}>
+                                <PortalMountNodeProvider value={containerRootNode}>{children}</PortalMountNodeProvider>
+                            </ThemelessFluentProvider>
                         </RendererProvider>
                     );
                 };
