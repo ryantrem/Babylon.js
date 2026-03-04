@@ -114,17 +114,17 @@ export class Logger {
     /**
      * Log a message to the console
      */
-    public static Log: (message: string | any[], limit?: number) => void = Logger._LogEnabled.bind(Logger, Logger.MessageLogLevel);
+    public static Log: (message: string | any[], limit?: number) => void = (message: string | any[], limit?: number) => Logger._LogEnabled(Logger.MessageLogLevel, message, limit);
 
     /**
      * Write a warning message to the console
      */
-    public static Warn: (message: string | any[], limit?: number) => void = Logger._LogEnabled.bind(Logger, Logger.WarningLogLevel);
+    public static Warn: (message: string | any[], limit?: number) => void = (message: string | any[], limit?: number) => Logger._LogEnabled(Logger.WarningLogLevel, message, limit);
 
     /**
      * Write an error message to the console
      */
-    public static Error: (message: string | any[], limit?: number) => void = Logger._LogEnabled.bind(Logger, Logger.ErrorLogLevel);
+    public static Error: (message: string | any[], limit?: number) => void = (message: string | any[], limit?: number) => Logger._LogEnabled(Logger.ErrorLogLevel, message, limit);
 
     /**
      * Gets current log cache (list of logs)
@@ -154,7 +154,7 @@ export class Logger {
         for (const l of levels) {
             if ((level & l) === l) {
                 const type = this._Levels[l];
-                Logger[type.name as "Log" | "Warn" | "Error"] = Logger._LogEnabled.bind(Logger, l);
+                Logger[type.name as "Log" | "Warn" | "Error"] = (message: string | any[], limit?: number) => Logger._LogEnabled(l, message, limit);
             }
         }
     }
