@@ -41,7 +41,18 @@
             "presentation": {
                 "group": "watch"
             },
-            "problemMatcher": ["$tsc-watch"]
+            "problemMatcher": {
+                "pattern": "$tsc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": {
+                        "regexp": "Starting compilation in watch mode|File change detected"
+                    },
+                    "endsPattern": {
+                        "regexp": "Watching for file changes"
+                    }
+                }
+            }
         },
         {
             "label": "Watch Smart Filters",
@@ -55,7 +66,18 @@
             "presentation": {
                 "group": "watch"
             },
-            "problemMatcher": ["$tsc-watch"]
+            "problemMatcher": {
+                "pattern": "$tsc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": {
+                        "regexp": "Starting compilation in watch mode|File change detected"
+                    },
+                    "endsPattern": {
+                        "regexp": "Watching for file changes"
+                    }
+                }
+            }
         },
         {
             "label": "Watch Smart Filters Assets",
@@ -645,7 +667,18 @@
             },
             "args": ["run", "watch:dev", "-w", "@tools/viewer"],
             "isBackground": true,
-            "problemMatcher": ["$tsc-watch"]
+            "problemMatcher": {
+                "pattern": "$tsc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": {
+                        "regexp": "Starting compilation in watch mode|File change detected"
+                    },
+                    "endsPattern": {
+                        "regexp": "Watching for file changes"
+                    }
+                }
+            }
         },
         {
             "label": "Viewer Test App (Web)",
@@ -703,7 +736,18 @@
             },
             "args": ["run", "watch:dev", "-w", "@dev/inspector"],
             "isBackground": true,
-            "problemMatcher": ["$tsc-watch"]
+            "problemMatcher": {
+                "pattern": "$tsc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": {
+                        "regexp": "Starting compilation in watch mode|File change detected"
+                    },
+                    "endsPattern": {
+                        "regexp": "Watching for file changes"
+                    }
+                }
+            }
         },
         {
             "label": "Inspector v2 Test App",
