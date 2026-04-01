@@ -38,6 +38,8 @@ export type { IThemeService } from "./services/themeService";
 export { ThemeServiceIdentity } from "./services/themeService";
 export type { ISettingsStore, SettingDescriptor } from "./services/settingsStore";
 export { SettingsStoreIdentity } from "./services/settingsStore";
+export type { IToastService } from "./services/toastService";
+export { ToastServiceIdentity } from "./services/toastService";
 export type { IGizmoService, GizmoMode } from "./services/gizmoService";
 export { GizmoServiceIdentity } from "./services/gizmoService";
 export type { IWatcherService } from "./services/watcherService";

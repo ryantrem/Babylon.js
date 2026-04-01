@@ -9,6 +9,7 @@ import {
     useCallback,
     useEffect,
     useReducer,
+    useRef,
     useState,
 } from "react";
 
@@ -40,12 +41,13 @@ import { createRoot } from "react-dom/client";
 
 import { Deferred } from "core/Misc/deferred";
 import { Logger } from "core/Misc/logger";
-import { ToastProvider } from "shared-ui-components/fluent/primitives/toast";
+import { type ToastHandle, ToastProvider } from "shared-ui-components/fluent/primitives/toast";
 import { Theme } from "./components/theme";
 import { ExtensionManagerContext } from "./contexts/extensionManagerContext";
 import { SettingsStoreContext } from "./contexts/settingsContext";
 import { type IReactContextService, type ReactContextHandle, ReactContextServiceIdentity } from "./services/reactContextService";
 import { ThemeSelectorServiceDefinition } from "./services/themeSelectorService";
+import { type IToastService, ToastServiceIdentity } from "./services/toastService";
 
 const useStyles = makeStyles({
     app: {
@@ -152,6 +154,8 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
 
         const [rootComponentService, setRootComponentService] = useState<IRootComponentService>();
 
+        const toastRef = useRef<ToastHandle>(null);
+
         const [contexts, updateContexts] = useReducer((state: ReactContextEntry[], action: ReactContextAction): ReactContextEntry[] => {
             switch (action.type) {
                 case "add":
@@ -192,6 +196,15 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
                                 },
                             };
                         },
+                    }),
+                });
+
+                // Register the toast service so other services can show toast notifications.
+                await serviceContainer.addServiceAsync<[IToastService], []>({
+                    friendlyName: "Toast Service",
+                    produces: [ToastServiceIdentity],
+                    factory: (): IToastService => ({
+                        showToast: (message, options) => toastRef.current?.showToast(message, options),
                     }),
                 });
 
@@ -321,7 +334,7 @@ export function MakeModularTool(options: ModularToolOptions): IDisposable {
                     <SettingsStoreContext.Provider value={settingsStore}>
                         <ExtensionManagerContext.Provider value={extensionManagerContext}>
                             <Theme className={classes.app}>
-                                <ToastProvider>
+                                <ToastProvider imperativeRef={toastRef}>
                                     <Dialog open={!!requiredExtensions} modalType="alert">
                                         <DialogSurface>
                                             <DialogBody>
